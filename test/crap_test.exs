@@ -52,7 +52,7 @@ defmodule CrapTest do
               ]} = Crap.analyze_string(source, coverage)
     end
 
-    test "marks functions with missing coverage without discovering coverage automatically" do
+    test "scores functions with missing coverage as zero percent" do
       source = """
       defmodule Example do
         def uncovered, do: :ok
@@ -65,7 +65,10 @@ defmodule CrapTest do
                   module: Example,
                   function: :uncovered,
                   arity: 0,
-                  status: {:missing_coverage, {Example, :uncovered, 0}}
+                  complexity: 1,
+                  coverage_percent: 0,
+                  score: 2.0,
+                  status: :scored
                 }
               ]} = Crap.analyze_string(source, %{})
     end

@@ -29,7 +29,7 @@ defmodule Crap.ReportTest do
              ]
     end
 
-    test "keeps functions with missing coverage visible" do
+    test "scores functions with missing coverage as zero percent" do
       functions = [
         %{
           file: "/project/lib/example.ex",
@@ -47,9 +47,9 @@ defmodule Crap.ReportTest do
                  function: :hidden,
                  arity: 0,
                  complexity: 1,
-                 coverage_percent: nil,
-                 score: nil,
-                 status: {:missing_coverage, {Example, :hidden, 0}}
+                 coverage_percent: 0,
+                 score: 2.0,
+                 status: :scored
                }
              ]
     end
@@ -128,9 +128,9 @@ defmodule Crap.ReportTest do
           function: :missing,
           arity: 0,
           complexity: 2,
-          coverage_percent: nil,
-          score: nil,
-          status: {:missing_coverage, {Example, :missing, 0}}
+          coverage_percent: 0,
+          score: 6.0,
+          status: :scored
         }
       ]
 
@@ -139,11 +139,10 @@ defmodule Crap.ReportTest do
       assert output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
       assert output =~ "/project/lib/b.ex | Example | risky/1 | 4 | 0.00% | 20.00 | scored"
 
-      assert output =~
-               "/project/lib/c.ex | Example | missing/0 | 2 | missing | - | missing coverage"
+      assert output =~ "/project/lib/c.ex | Example | missing/0 | 2 | 0.00% | 6.00 | scored"
 
       assert output =~
-               "Summary: files=3 functions=3 scored=2 missing_coverage=1 worst_score=20.00"
+               "Summary: files=3 functions=3 scored=3 worst_score=20.00"
 
       assert :binary.match(output, "risky/1") < :binary.match(output, "small/0")
     end
@@ -167,7 +166,7 @@ defmodule Crap.ReportTest do
   end
 
   describe "failures/2" do
-    test "groups high scores, missing coverage, and score errors" do
+    test "groups high scores and score errors" do
       rows = [
         %{
           file: "lib/risky.ex",
@@ -178,16 +177,6 @@ defmodule Crap.ReportTest do
           coverage_percent: 0,
           score: 110.0,
           status: :scored
-        },
-        %{
-          file: "lib/missing.ex",
-          module: Example,
-          function: :missing,
-          arity: 0,
-          complexity: 2,
-          coverage_percent: nil,
-          score: nil,
-          status: {:missing_coverage, {Example, :missing, 0}}
         },
         %{
           file: "lib/error.ex",
@@ -213,12 +202,10 @@ defmodule Crap.ReportTest do
 
       assert %{
                high_scores: [high_score],
-               missing_coverage: [missing],
                score_errors: [score_error]
              } = Crap.Report.failures(rows, 30)
 
       assert high_score.function == :risky
-      assert missing.function == :missing
       assert score_error.function == :bad
     end
 
@@ -238,7 +225,6 @@ defmodule Crap.ReportTest do
 
       assert Crap.Report.failures(rows, 30) == %{
                high_scores: [],
-               missing_coverage: [],
                score_errors: []
              }
     end

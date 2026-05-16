@@ -21,7 +21,8 @@ defmodule Mix.Tasks.Crap do
 
   The task scans only root `lib/**/*.ex` files. The default maximum CRAP score is
   30 (default: 30). Use `--max-score N` to override it. The task fails when any
-  function exceeds the threshold, has missing coverage, or has score calculation errors.
+  function exceeds the threshold or has score calculation errors. Missing function
+  coverage is scored as 0%. Missing coverdata input is still a usage error.
   """
 
   @impl Mix.Task
@@ -131,7 +132,6 @@ defmodule Mix.Tasks.Crap do
     [
       "CRAP threshold failed: max_score=#{format_number(max_score)}",
       failure_section("High scores", failures.high_scores, &high_score_line/1),
-      failure_section("Missing coverage", failures.missing_coverage, &status_line/1),
       failure_section("Score errors", failures.score_errors, &status_line/1)
     ]
     |> Enum.join("\n")
@@ -158,7 +158,6 @@ defmodule Mix.Tasks.Crap do
     "#{row.file} #{inspect(row.module)}.#{row.function}/#{row.arity}"
   end
 
-  defp format_status({:missing_coverage, _key}), do: "missing coverage"
   defp format_status({:error, reason}), do: "error: #{reason}"
   defp format_status(status), do: to_string(status)
 

@@ -25,7 +25,7 @@
 - Modify: `lib/crap.ex`
 - Test: `test/crap_test.exs`
 
-- [ ] **Step 1: Update the failing public API test**
+- [x] **Step 1: Update the failing public API test**
 
 In `test/crap_test.exs`, replace the test named `"marks functions with missing coverage without discovering coverage automatically"` with:
 
@@ -52,13 +52,13 @@ test "scores functions with missing coverage as zero percent" do
 end
 ```
 
-- [ ] **Step 2: Run the public API test to verify failure**
+- [x] **Step 2: Run the public API test to verify failure**
 
 Run: `mix test test/crap_test.exs`
 
 Expected: FAIL because `Crap.analyze_string/2` still returns `status: {:missing_coverage, key}` with no score for missing coverage entries.
 
-- [ ] **Step 3: Update public API docs and missing coverage scoring**
+- [x] **Step 3: Update public API docs and missing coverage scoring**
 
 In `lib/crap.ex`, update the `analyze_string/2` docs from:
 
@@ -108,7 +108,7 @@ defp score_function(function, coverage_by_function) do
 end
 ```
 
-- [ ] **Step 4: Run the public API test to verify pass**
+- [x] **Step 4: Run the public API test to verify pass**
 
 Run: `mix test test/crap_test.exs`
 
@@ -129,7 +129,7 @@ git commit -m "Score missing coverage as zero in public API"
 - Modify: `lib/crap/report.ex`
 - Test: `test/crap/report_test.exs`
 
-- [ ] **Step 1: Update the missing coverage row test**
+- [x] **Step 1: Update the missing coverage row test**
 
 In `test/crap/report_test.exs`, replace the test named `"keeps functions with missing coverage visible"` with:
 
@@ -160,7 +160,7 @@ test "scores functions with missing coverage as zero percent" do
 end
 ```
 
-- [ ] **Step 2: Update render expectations for zero coverage**
+- [x] **Step 2: Update render expectations for zero coverage**
 
 In the `"renders sorted rows and a compact summary"` test, replace the row for `:missing` with a scored zero-coverage row:
 
@@ -197,7 +197,7 @@ assert output =~
          "Summary: files=3 functions=3 scored=3 missing_coverage=0 worst_score=20.00"
 ```
 
-- [ ] **Step 3: Update failure grouping expectations**
+- [x] **Step 3: Update failure grouping expectations**
 
 In the `"groups high scores, missing coverage, and score errors"` test, rename it to:
 
@@ -242,13 +242,13 @@ assert Crap.Report.failures(rows, 30) == %{
        }
 ```
 
-- [ ] **Step 4: Run report tests to verify failure**
+- [x] **Step 4: Run report tests to verify failure**
 
 Run: `mix test test/crap/report_test.exs`
 
 Expected: FAIL because `Crap.Report.rows/2` still marks missing entries as `{:missing_coverage, key}` and `Crap.Report.failures/2` still returns a `missing_coverage` category.
 
-- [ ] **Step 5: Update report scoring and failure grouping**
+- [x] **Step 5: Update report scoring and failure grouping**
 
 In `lib/crap/report.ex`, replace:
 
@@ -275,7 +275,7 @@ end
 
 Leave `format_coverage(nil)` and `format_status({:missing_coverage, _key})` in place only if existing tests or callers still construct legacy rows directly. Do not emit `{:missing_coverage, key}` for newly built rows.
 
-- [ ] **Step 6: Run report tests to verify pass**
+- [x] **Step 6: Run report tests to verify pass**
 
 Run: `mix test test/crap/report_test.exs`
 
@@ -296,7 +296,7 @@ git commit -m "Score missing report coverage as zero"
 - Modify: `lib/mix/tasks/crap.ex`
 - Test: `test/mix/tasks/crap_test.exs`
 
-- [ ] **Step 1: Update task metadata expectations**
+- [x] **Step 1: Update task metadata expectations**
 
 In `test/mix/tasks/crap_test.exs`, replace:
 
@@ -316,7 +316,7 @@ Keep this assertion unchanged:
 assert Mix.Tasks.Crap.moduledoc() =~ "score calculation error"
 ```
 
-- [ ] **Step 2: Replace the task-level missing coverage failure test**
+- [x] **Step 2: Replace the task-level missing coverage failure test**
 
 In `test/mix/tasks/crap_test.exs`, replace the test named `"raises with missing coverage summary even without high scores"` with:
 
@@ -390,13 +390,13 @@ test "fails when missing function coverage produces a score above the threshold"
 end
 ```
 
-- [ ] **Step 3: Run task tests to verify failure**
+- [x] **Step 3: Run task tests to verify failure**
 
 Run: `mix test test/mix/tasks/crap_test.exs`
 
 Expected: FAIL because task docs still describe missing coverage as an independent failure and the failure message still includes a `Missing coverage` section.
 
-- [ ] **Step 4: Update Mix task docs**
+- [x] **Step 4: Update Mix task docs**
 
 In `lib/mix/tasks/crap.ex`, replace the last sentence of `@moduledoc`:
 
@@ -411,7 +411,7 @@ function exceeds the threshold or has score calculation errors. Missing function
 coverage is scored as 0%; missing coverdata input is still a usage error.
 ```
 
-- [ ] **Step 5: Remove missing coverage from threshold failure output**
+- [x] **Step 5: Remove missing coverage from threshold failure output**
 
 In `lib/mix/tasks/crap.ex`, replace `failure_message/2` with:
 
@@ -439,7 +439,7 @@ defp format_status({:error, reason}), do: "error: #{reason}"
 defp format_status(status), do: to_string(status)
 ```
 
-- [ ] **Step 6: Run task tests to verify pass**
+- [x] **Step 6: Run task tests to verify pass**
 
 Run: `mix test test/mix/tasks/crap_test.exs`
 
@@ -459,19 +459,19 @@ git commit -m "Fail mix crap only on calculated CRAP scores"
 **Files:**
 - Modify only if earlier tasks revealed formatting or test expectation issues.
 
-- [ ] **Step 1: Run the full test suite**
+- [x] **Step 1: Run the full test suite**
 
 Run: `mix test`
 
 Expected: PASS.
 
-- [ ] **Step 2: Run formatter check**
+- [x] **Step 2: Run formatter check**
 
 Run: `mix format --check-formatted`
 
 Expected: PASS.
 
-- [ ] **Step 3: Manually inspect user-facing wording**
+- [x] **Step 3: Manually inspect user-facing wording**
 
 Run: `mix help crap`
 

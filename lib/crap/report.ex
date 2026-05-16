@@ -28,7 +28,6 @@ defmodule Crap.Report do
   def failures(rows, max_score) when is_list(rows) and is_number(max_score) do
     %{
       high_scores: Enum.filter(rows, &high_score?(&1, max_score)),
-      missing_coverage: Enum.filter(rows, &match?({:missing_coverage, _key}, &1.status)),
       score_errors: Enum.filter(rows, &match?({:error, _reason}, &1.status))
     }
   end
@@ -47,16 +46,15 @@ defmodule Crap.Report do
 
   defp row(function, coverage_by_function) do
     key = {function.module, function.function, function.arity}
+    coverage_percent = Map.get(coverage_by_function, key, 0)
 
     function
     |> Map.put(:coverage_percent, nil)
     |> Map.put(:score, nil)
-    |> put_score(key, Map.fetch(coverage_by_function, key))
+    |> put_score(coverage_percent)
   end
 
-  defp put_score(row, key, :error), do: Map.put(row, :status, {:missing_coverage, key})
-
-  defp put_score(row, _key, {:ok, coverage_percent}) do
+  defp put_score(row, coverage_percent) do
     case Crap.score(row.complexity, coverage_percent) do
       {:ok, score} ->
         row
@@ -100,13 +98,12 @@ defmodule Crap.Report do
   defp render_summary(rows) do
     files = rows |> Enum.map(& &1.file) |> Enum.uniq() |> length()
     scored = Enum.count(rows, &(&1.status == :scored))
-    missing = Enum.count(rows, &match?({:missing_coverage, _key}, &1.status))
 
     worst_score =
       rows |> Enum.map(& &1.score) |> Enum.reject(&is_nil/1) |> Enum.max(fn -> nil end)
 
     "Summary: files=#{files} functions=#{length(rows)} scored=#{scored} " <>
-      "missing_coverage=#{missing} worst_score=#{format_score(worst_score)}"
+      "worst_score=#{format_score(worst_score)}"
   end
 
   defp format_coverage(nil), do: "missing"
@@ -118,6 +115,5 @@ defmodule Crap.Report do
   defp format_number(number), do: :erlang.float_to_binary(number * 1.0, decimals: 2)
 
   defp format_status(:scored), do: "scored"
-  defp format_status({:missing_coverage, _key}), do: "missing coverage"
   defp format_status({:error, reason}), do: "error: #{reason}"
 end

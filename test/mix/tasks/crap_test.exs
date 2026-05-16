@@ -13,7 +13,7 @@ defmodule Mix.Tasks.CrapTest do
       assert Mix.Tasks.Crap.moduledoc() =~ "--max-score"
       assert Mix.Tasks.Crap.moduledoc() =~ "default: 30"
       assert Mix.Tasks.Crap.moduledoc() =~ "lib/**/*.ex"
-      assert Mix.Tasks.Crap.moduledoc() =~ "missing coverage"
+      assert Mix.Tasks.Crap.moduledoc() =~ ~r/Missing function\s+coverage is scored as 0%/
       assert Mix.Tasks.Crap.moduledoc() =~ "score calculation error"
       refute Mix.Tasks.Crap.moduledoc() =~ "report-only"
     end
@@ -145,24 +145,66 @@ defmodule Mix.Tasks.CrapTest do
       end)
     end
 
-    test "raises with missing coverage summary even without high scores" do
+    test "scores missing function coverage as zero and passes when score is within threshold" do
       with_coverdata(fn coverdata_path ->
-        in_tmp("crap-missing-coverage", fn ->
+        in_tmp("crap-missing-coverage-under-threshold", fn ->
           File.mkdir_p!("lib")
           File.write!("lib/example.ex", "defmodule Example do\n  def ok, do: :ok\nend\n")
 
-          capture_io(fn ->
-            assert_raise Mix.Error,
-                         ~r/Missing coverage: 1\n  lib\/example\.ex Example\.ok\/0 status=missing coverage/,
-                         fn ->
-                           Mix.Tasks.Crap.run([
-                             "--coverdata",
-                             coverdata_path,
-                             "--max-score",
-                             "999"
-                           ])
-                         end
-          end)
+          output =
+            capture_io(fn ->
+              Mix.Tasks.Crap.run([
+                "--coverdata",
+                coverdata_path,
+                "--max-score",
+                "30"
+              ])
+            end)
+
+          assert output =~ "lib/example.ex | Example | ok/0 | 1 | 0.00% | 2.00 | scored"
+          refute output =~ "Missing coverage"
+        end)
+      end)
+    end
+
+    test "fails when missing function coverage produces a score above the threshold" do
+      with_coverdata(fn coverdata_path ->
+        in_tmp("crap-missing-coverage-over-threshold", fn ->
+          File.mkdir_p!("lib")
+
+          File.write!(
+            "lib/example.ex",
+            """
+            defmodule Example do
+              def risky(a, b, c, d) do
+                cond do
+                  a -> :a
+                  b -> :b
+                  c -> :c
+                  d -> :d
+                  true -> :fallback
+                end
+              end
+            end
+            """
+          )
+
+          output =
+            capture_io(fn ->
+              assert_raise Mix.Error,
+                           ~r/CRAP threshold failed: max_score=30\.00.*High scores: 1\n  lib\/example\.ex Example\.risky\/4 score=42\.00/s,
+                           fn ->
+                             Mix.Tasks.Crap.run([
+                               "--coverdata",
+                               coverdata_path,
+                               "--max-score",
+                               "30"
+                             ])
+                           end
+            end)
+
+          assert output =~ "lib/example.ex | Example | risky/4 | 6 | 0.00% | 42.00 | scored"
+          refute output =~ "Missing coverage"
         end)
       end)
     end

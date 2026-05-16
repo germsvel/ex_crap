@@ -35,8 +35,8 @@ defmodule Crap do
       %{{Example, :visible?, 1} => 75.0}
 
   Coverage values are percentages from `0` to `100`. Functions without a matching
-  coverage entry are returned with `{:missing_coverage, key}` status. This function
-  does not discover or ingest coverage automatically.
+  coverage entry are scored as `0%` covered. This function does not discover or
+  ingest coverage automatically.
   """
   def analyze_string(source, coverage_by_function) when is_map(coverage_by_function) do
     with {:ok, functions} <- Complexity.from_string(source) do
@@ -75,22 +75,17 @@ defmodule Crap do
 
   defp score_function(function, coverage_by_function) do
     key = {function.module, function.function, function.arity}
+    coverage_percent = Map.get(coverage_by_function, key, 0)
 
-    case Map.fetch(coverage_by_function, key) do
-      {:ok, coverage_percent} ->
-        case score(function.complexity, coverage_percent) do
-          {:ok, score} ->
-            function
-            |> Map.put(:coverage_percent, coverage_percent)
-            |> Map.put(:score, score)
-            |> Map.put(:status, :scored)
+    case score(function.complexity, coverage_percent) do
+      {:ok, score} ->
+        function
+        |> Map.put(:coverage_percent, coverage_percent)
+        |> Map.put(:score, score)
+        |> Map.put(:status, :scored)
 
-          {:error, reason} ->
-            Map.put(function, :status, {:error, reason})
-        end
-
-      :error ->
-        Map.put(function, :status, {:missing_coverage, key})
+      {:error, reason} ->
+        Map.put(function, :status, {:error, reason})
     end
   end
 end
