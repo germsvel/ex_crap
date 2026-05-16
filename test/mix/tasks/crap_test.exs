@@ -5,13 +5,17 @@ defmodule Mix.Tasks.CrapTest do
 
   describe "task metadata" do
     test "exposes mix task docs" do
-      assert Mix.Tasks.Crap.shortdoc() == "Print report-only CRAP scores for project source"
+      assert Mix.Tasks.Crap.shortdoc() == "Print CRAP scores for project source"
 
       assert Mix.Tasks.Crap.moduledoc() =~ "mix crap"
       assert Mix.Tasks.Crap.moduledoc() =~ "mix test --cover --export-coverage default"
       assert Mix.Tasks.Crap.moduledoc() =~ "--coverdata"
+      assert Mix.Tasks.Crap.moduledoc() =~ "--max-score"
+      assert Mix.Tasks.Crap.moduledoc() =~ "default: 30"
       assert Mix.Tasks.Crap.moduledoc() =~ "lib/**/*.ex"
-      assert Mix.Tasks.Crap.moduledoc() =~ "report-only"
+      assert Mix.Tasks.Crap.moduledoc() =~ "missing coverage"
+      assert Mix.Tasks.Crap.moduledoc() =~ "score calculation error"
+      refute Mix.Tasks.Crap.moduledoc() =~ "report-only"
     end
   end
 
@@ -22,13 +26,31 @@ defmodule Mix.Tasks.CrapTest do
       assert output =~ "Usage: mix crap"
       assert output =~ "mix test --cover --export-coverage default"
       assert output =~ "mix crap --coverdata path/to/file.coverdata"
+      assert output =~ "mix crap --max-score 30"
       assert output =~ "--coverdata"
+      assert output =~ "--max-score"
       assert output =~ "lib/**/*.ex"
+    end
+
+    test "raises for invalid max score" do
+      for value <- ["nope", "10wat", "0", "-1"] do
+        assert_raise Mix.Error,
+                     "Invalid --max-score: #{value}. Expected a positive number.",
+                     fn ->
+                       Mix.Tasks.Crap.run(["--max-score", value])
+                     end
+      end
     end
 
     test "raises for unknown options" do
       assert_raise Mix.Error, ~r/Unknown option: --wat/, fn ->
         Mix.Tasks.Crap.run(["--wat"])
+      end
+    end
+
+    test "raises for unexpected positional arguments" do
+      assert_raise Mix.Error, "Unexpected argument: foo", fn ->
+        Mix.Tasks.Crap.run(["foo"])
       end
     end
 
@@ -51,12 +73,17 @@ defmodule Mix.Tasks.CrapTest do
       end)
     end
 
-    test "prints coverage guidance when source exists but no coverage data is available" do
+    test "prints coverage guidance and raises when source exists but no coverage data is available" do
       in_tmp("crap-no-coverage", fn ->
         File.mkdir_p!("lib")
         File.write!("lib/example.ex", "defmodule Example do\n  def ok, do: :ok\nend\n")
 
-        output = capture_io(fn -> Mix.Tasks.Crap.run([]) end)
+        output =
+          capture_io(fn ->
+            assert_raise Mix.Error, ~r/Coverage data is missing/, fn ->
+              Mix.Tasks.Crap.run([])
+            end
+          end)
 
         assert output =~ "No coverage data found"
         assert output =~ "cover/default.coverdata"
@@ -68,29 +95,95 @@ defmodule Mix.Tasks.CrapTest do
       end)
     end
 
-    test "prints a CRAP report from explicit coverdata" do
-      coverdata_path =
-        Path.join(System.tmp_dir!(), "crap-task-#{System.unique_integer([:positive])}.coverdata")
+    test "prints a CRAP report from explicit coverdata when rows pass the threshold" do
+      with_coverdata(fn coverdata_path ->
+        in_tmp("crap-explicit-coverdata", fn ->
+          File.mkdir_p!("lib")
 
-      cover_active? = cover_active?()
+          File.write!(
+            "lib/example.ex",
+            "defmodule Crap do\n  def score(complexity, coverage), do: {complexity, coverage}\nend\n"
+          )
 
-      unless cover_active?, do: assert({:ok, Crap} = :cover.compile_beam(Crap))
+          output = capture_io(fn -> Mix.Tasks.Crap.run(["--coverdata", coverdata_path]) end)
 
-      assert {:ok, 1.0} = Crap.score(1, 100)
-      assert :ok = :cover.export(String.to_charlist(coverdata_path))
+          refute output =~ "Analysis includes data"
+          assert output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
+          assert output =~ "lib/example.ex | Crap | score/2"
+          assert output =~ "scored"
+        end)
+      end)
+    end
 
-      unless cover_active? do
-        :cover.stop()
+    test "raises with high score summary after printing the report" do
+      with_coverdata(fn coverdata_path ->
+        in_tmp("crap-high-score", fn ->
+          File.mkdir_p!("lib")
 
-        output = capture_io(fn -> Mix.Tasks.Crap.run(["--coverdata", coverdata_path]) end)
+          File.write!(
+            "lib/example.ex",
+            "defmodule Crap do\n  def score(complexity, coverage), do: {complexity, coverage}\nend\n"
+          )
 
-        refute output =~ "Analysis includes data"
-        assert output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
-        assert output =~ "Crap | score/2"
-        assert output =~ "scored"
-      end
+          output =
+            capture_io(fn ->
+              assert_raise Mix.Error,
+                           ~r/CRAP threshold failed: max_score=0\.01.*High scores: 1\n  lib\/example\.ex Crap\.score\/2 score=\d+\.\d{2}/s,
+                           fn ->
+                             Mix.Tasks.Crap.run([
+                               "--coverdata",
+                               coverdata_path,
+                               "--max-score",
+                               "0.01"
+                             ])
+                           end
+            end)
 
-      unless cover_active?, do: :cover.stop()
+          assert output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
+          assert output =~ "lib/example.ex | Crap | score/2"
+        end)
+      end)
+    end
+
+    test "raises with missing coverage summary even without high scores" do
+      with_coverdata(fn coverdata_path ->
+        in_tmp("crap-missing-coverage", fn ->
+          File.mkdir_p!("lib")
+          File.write!("lib/example.ex", "defmodule Example do\n  def ok, do: :ok\nend\n")
+
+          capture_io(fn ->
+            assert_raise Mix.Error,
+                         ~r/Missing coverage: 1\n  lib\/example\.ex Example\.ok\/0 status=missing coverage/,
+                         fn ->
+                           Mix.Tasks.Crap.run([
+                             "--coverdata",
+                             coverdata_path,
+                             "--max-score",
+                             "999"
+                           ])
+                         end
+          end)
+        end)
+      end)
+    end
+  end
+
+  defp with_coverdata(fun) do
+    coverdata_path =
+      Path.join(System.tmp_dir!(), "crap-task-#{System.unique_integer([:positive])}.coverdata")
+
+    cover_active? = cover_active?()
+
+    unless cover_active?, do: assert({:ok, Crap} = :cover.compile_beam(Crap))
+
+    assert {:ok, 1.0} = Crap.score(1, 100)
+    assert :ok = :cover.export(String.to_charlist(coverdata_path))
+
+    unless cover_active?, do: :cover.stop()
+
+    try do
+      fun.(coverdata_path)
+    after
       File.rm(coverdata_path)
     end
   end

@@ -8,7 +8,29 @@ defmodule Crap.Report do
   """
   def rows(functions, coverage_by_function)
       when is_list(functions) and is_map(coverage_by_function) do
-    Enum.map(functions, &row(&1, coverage_by_function))
+    rows(functions, coverage_by_function, nil)
+  end
+
+  @doc """
+  Joins complexity results with coverage and normalizes files relative to `root` when provided.
+  """
+  def rows(functions, coverage_by_function, root)
+      when is_list(functions) and is_map(coverage_by_function) and
+             (is_binary(root) or is_nil(root)) do
+    functions
+    |> Enum.map(&normalize_file(&1, root))
+    |> Enum.map(&row(&1, coverage_by_function))
+  end
+
+  @doc """
+  Groups rows that should fail threshold enforcement.
+  """
+  def failures(rows, max_score) when is_list(rows) and is_number(max_score) do
+    %{
+      high_scores: Enum.filter(rows, &high_score?(&1, max_score)),
+      missing_coverage: Enum.filter(rows, &match?({:missing_coverage, _key}, &1.status)),
+      score_errors: Enum.filter(rows, &match?({:error, _reason}, &1.status))
+    }
   end
 
   @doc """
@@ -46,6 +68,15 @@ defmodule Crap.Report do
         Map.put(row, :status, {:error, reason})
     end
   end
+
+  defp normalize_file(function, nil), do: function
+
+  defp normalize_file(function, root) do
+    Map.update!(function, :file, &Path.relative_to(&1, root))
+  end
+
+  defp high_score?(%{score: score}, max_score) when is_number(score), do: score > max_score
+  defp high_score?(_row, _max_score), do: false
 
   defp sort_key(row),
     do: {score_sort(row.score), row.file, inspect(row.module), row.function, row.arity}

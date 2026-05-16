@@ -80,6 +80,23 @@ defmodule Crap.ReportTest do
       assert good.status == :scored
       assert good.score == 1.0
     end
+
+    test "normalizes files relative to the provided root" do
+      functions = [
+        %{
+          file: "/project/lib/example.ex",
+          module: Example,
+          function: :visible?,
+          arity: 1,
+          complexity: 4
+        }
+      ]
+
+      coverage = %{{Example, :visible?, 1} => 75}
+
+      assert [row] = Crap.Report.rows(functions, coverage, "/project")
+      assert row.file == "lib/example.ex"
+    end
   end
 
   describe "render/1" do
@@ -146,6 +163,84 @@ defmodule Crap.ReportTest do
       ]
 
       assert Crap.Report.render(rows) =~ "110.00"
+    end
+  end
+
+  describe "failures/2" do
+    test "groups high scores, missing coverage, and score errors" do
+      rows = [
+        %{
+          file: "lib/risky.ex",
+          module: Example,
+          function: :risky,
+          arity: 0,
+          complexity: 10,
+          coverage_percent: 0,
+          score: 110.0,
+          status: :scored
+        },
+        %{
+          file: "lib/missing.ex",
+          module: Example,
+          function: :missing,
+          arity: 0,
+          complexity: 2,
+          coverage_percent: nil,
+          score: nil,
+          status: {:missing_coverage, {Example, :missing, 0}}
+        },
+        %{
+          file: "lib/error.ex",
+          module: Example,
+          function: :bad,
+          arity: 0,
+          complexity: 1,
+          coverage_percent: nil,
+          score: nil,
+          status: {:error, :invalid_coverage}
+        },
+        %{
+          file: "lib/safe.ex",
+          module: Example,
+          function: :safe,
+          arity: 0,
+          complexity: 1,
+          coverage_percent: 100,
+          score: 1.0,
+          status: :scored
+        }
+      ]
+
+      assert %{
+               high_scores: [high_score],
+               missing_coverage: [missing],
+               score_errors: [score_error]
+             } = Crap.Report.failures(rows, 30)
+
+      assert high_score.function == :risky
+      assert missing.function == :missing
+      assert score_error.function == :bad
+    end
+
+    test "does not flag scores equal to the threshold" do
+      rows = [
+        %{
+          file: "lib/exact.ex",
+          module: Example,
+          function: :exact,
+          arity: 0,
+          complexity: 1,
+          coverage_percent: 100,
+          score: 30.0,
+          status: :scored
+        }
+      ]
+
+      assert Crap.Report.failures(rows, 30) == %{
+               high_scores: [],
+               missing_coverage: [],
+               score_errors: []
+             }
     end
   end
 end
