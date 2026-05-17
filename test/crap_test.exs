@@ -72,6 +72,20 @@ defmodule CrapTest do
                 }
               ]} = Crap.analyze_string(source, %{})
     end
+
+    test "returns an empty result for valid source with no analyzable functions" do
+      source = """
+      defprotocol Example.Protocol do
+        def call(value)
+      end
+      """
+
+      assert Crap.analyze_string(source, %{}) == {:ok, []}
+    end
+
+    test "still returns invalid_source for invalid source" do
+      assert Crap.analyze_string("defmodule", %{}) == {:error, :invalid_source}
+    end
   end
 
   describe "analyze_file/2" do
@@ -91,6 +105,23 @@ defmodule CrapTest do
       assert Enum.find(results, &(&1.function == :classify)).score == 4.25
       assert Enum.find(results, &(&1.function == :visible?)).score == 4.125
       assert Enum.find(results, &(&1.function == :fallback)).score == 20.0
+    end
+
+    test "returns an empty result for a valid source file with no analyzable functions" do
+      path =
+        Path.join(System.tmp_dir!(), "crap-empty-api-#{System.unique_integer([:positive])}.ex")
+
+      File.write!(path, """
+      defprotocol Example.Protocol do
+        def call(value)
+      end
+      """)
+
+      try do
+        assert Crap.analyze_file(path, %{}) == {:ok, []}
+      after
+        File.rm(path)
+      end
     end
   end
 

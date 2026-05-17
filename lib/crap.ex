@@ -16,6 +16,7 @@ defmodule Crap do
   Analyzes one Elixir source file and combines each discovered function with explicit coverage.
 
   This is a single-file convenience wrapper around `Crap.Complexity.from_file/1`.
+  Valid files with no analyzable function or macro bodies return `{:ok, []}`.
   It does not perform project-wide scanning or coverage discovery.
   """
   def analyze_file(path, coverage_by_function) when is_map(coverage_by_function) do
@@ -36,6 +37,8 @@ defmodule Crap do
   Coverage values are percentages from `0` to `100`. Functions without a matching
   coverage entry are scored as `0%` covered. This function does not discover or
   ingest coverage automatically.
+
+  Valid source with no analyzable function or macro bodies returns `{:ok, []}`.
   """
   def analyze_string(source, coverage_by_function) when is_map(coverage_by_function) do
     with {:ok, functions} <- Complexity.from_string(source) do
