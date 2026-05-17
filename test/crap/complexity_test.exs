@@ -591,6 +591,29 @@ defmodule Crap.ComplexityTest do
               ]} = Crap.Complexity.from_string(source)
     end
 
+    test "allows default-argument function heads before implementation clauses" do
+      source = ~S"""
+      defmodule Example do
+        def check(session, label, opts \\ [exact: true])
+
+        def check(session, label, opts) when is_binary(label) and is_list(opts) do
+          {session, label, opts}
+        end
+      end
+      """
+
+      assert {:ok,
+              [
+                %{
+                  module: Example,
+                  function: :check,
+                  arity: 3,
+                  line: 4,
+                  complexity: 2
+                }
+              ]} = Crap.Complexity.from_string(source)
+    end
+
     test "returns an error tuple for bodyless supported definitions inside modules" do
       for definition <- ["def", "defp", "defmacro", "defmacrop"] do
         source = """
