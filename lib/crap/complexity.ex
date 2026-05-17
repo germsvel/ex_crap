@@ -123,7 +123,8 @@ defmodule Crap.Complexity do
          current_module,
          _in_executable?
        ) do
-    malformed_executable_container?(body, module_name(module_ast, current_module), true)
+    not module_alias?(module_ast) ||
+      malformed_executable_container?(body, module_name(module_ast, current_module), true)
   end
 
   defp malformed_executable_container?(
@@ -134,22 +135,24 @@ defmodule Crap.Complexity do
        do: true
 
   defp malformed_executable_container?(
-         {:defimpl, _meta, [_, opts, [do: body]]},
+         {:defimpl, _meta, [protocol_ast, opts, [do: body]]},
          current_module,
          _in_executable?
        )
        when is_list(opts) do
-    not Keyword.has_key?(opts, :for) ||
+    for_ast = Keyword.get(opts, :for)
+
+    not Keyword.has_key?(opts, :for) || not defimpl_name_ast?(protocol_ast, for_ast) ||
       malformed_executable_container?(body, current_module, true)
   end
 
   defp malformed_executable_container?(
-         {:defimpl, _meta, [_, [do: body]]},
+         {:defimpl, _meta, [protocol_ast, [do: body]]},
          current_module,
          _in_executable?
        )
        when not is_nil(current_module) do
-    malformed_executable_container?(body, current_module, true)
+    not module_alias?(protocol_ast) || malformed_executable_container?(body, current_module, true)
   end
 
   defp malformed_executable_container?(
@@ -195,6 +198,19 @@ defmodule Crap.Complexity do
   end
 
   defp malformed_executable_container?(_quoted, _current_module, _in_executable?), do: false
+
+  defp module_alias?({:__aliases__, _meta, parts}) when is_list(parts), do: true
+  defp module_alias?(_ast), do: false
+
+  defp defimpl_name_ast?(protocol_ast, for_ast) when is_list(for_ast) do
+    module_alias?(protocol_ast) and Enum.all?(for_ast, &defimpl_target_ast?/1)
+  end
+
+  defp defimpl_name_ast?(protocol_ast, for_ast),
+    do: module_alias?(protocol_ast) and defimpl_target_ast?(for_ast)
+
+  defp defimpl_target_ast?(for_ast) when is_atom(for_ast), do: true
+  defp defimpl_target_ast?(for_ast), do: module_alias?(for_ast)
 
   defp aggregate_clauses(functions) do
     functions

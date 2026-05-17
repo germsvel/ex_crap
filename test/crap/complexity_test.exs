@@ -534,6 +534,17 @@ defmodule Crap.ComplexityTest do
                Crap.Complexity.from_string("defimpl String.Chars, for: Example")
     end
 
+    test "returns an error tuple for invalid supported executable container names" do
+      assert {:error, :invalid_source} =
+               Crap.Complexity.from_string("defmodule 123 do\nend")
+
+      assert {:error, :invalid_source} =
+               Crap.Complexity.from_string("defimpl 123, for: Example do\nend")
+
+      assert {:error, :invalid_source} =
+               Crap.Complexity.from_string("defimpl String.Chars, for: 123 do\nend")
+    end
+
     test "returns an error tuple for unsupported defimpl shapes" do
       source = """
       defimpl String.Chars do
