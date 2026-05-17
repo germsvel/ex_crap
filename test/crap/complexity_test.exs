@@ -463,6 +463,18 @@ defmodule Crap.ComplexityTest do
       end
     end
 
+    test "returns an error tuple for bodyless supported definitions inside defimpl blocks" do
+      for definition <- ["def", "defp", "defmacro", "defmacrop"] do
+        source = """
+        defimpl String.Chars, for: Example do
+          #{definition} run(arg)
+        end
+        """
+
+        assert {:error, :invalid_source} = Crap.Complexity.from_string(source)
+      end
+    end
+
     test "returns an error tuple for incomplete supported executable containers" do
       assert {:error, :invalid_source} = Crap.Complexity.from_string("defmodule Foo")
 
