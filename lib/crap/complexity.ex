@@ -227,9 +227,11 @@ defmodule Crap.Complexity do
 
   defp local_module_declarations(_quoted, _current_module), do: []
 
-  defp defimpl_parts([protocol_ast, opts, [do: body]], _current_module)
+  defp defimpl_parts([protocol_ast, opts, [do: body]], current_module)
        when is_list(opts) do
-    {:ok, protocol_ast, Keyword.get(opts, :for), body}
+    with {:ok, for_ast} <- defimpl_for_ast(opts, current_module, body) do
+      {:ok, protocol_ast, for_ast, body}
+    end
   end
 
   defp defimpl_parts([protocol_ast, [do: body]], current_module)
@@ -248,6 +250,14 @@ defmodule Crap.Complexity do
   end
 
   defp defimpl_parts(_args, _current_module), do: :error
+
+  defp defimpl_for_ast(opts, current_module, _body) do
+    case Keyword.fetch(opts, :for) do
+      {:ok, for_ast} -> {:ok, for_ast}
+      :error when not is_nil(current_module) -> {:ok, current_module}
+      :error -> :error
+    end
+  end
 
   defp defimpl_name_ast?(protocol_ast, for_ast) when is_list(for_ast) do
     module_alias?(protocol_ast) and Enum.all?(for_ast, &defimpl_target_ast?/1)

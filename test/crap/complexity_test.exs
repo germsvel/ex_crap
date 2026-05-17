@@ -467,6 +467,30 @@ defmodule Crap.ComplexityTest do
               ]} = Crap.Complexity.from_string(source)
     end
 
+    test "analyzes nested defimpl blocks with empty options as implicit for current module" do
+      source = """
+      defmodule Outer do
+        defprotocol P do
+          def x(v)
+        end
+
+        defimpl P, [] do
+          def x(_), do: :ok
+        end
+      end
+      """
+
+      assert {:ok,
+              [
+                %{
+                  module: Outer.P.Outer,
+                  function: :x,
+                  arity: 1,
+                  complexity: 1
+                }
+              ]} = Crap.Complexity.from_string(source)
+    end
+
     test "scopes local protocol aliases in nested explicit defimpl blocks" do
       source = """
       defmodule Outer do
@@ -612,6 +636,16 @@ defmodule Crap.ComplexityTest do
     test "returns an error tuple for unsupported defimpl shapes" do
       source = """
       defimpl String.Chars do
+      end
+      """
+
+      assert {:error, :invalid_source} = Crap.Complexity.from_string(source)
+    end
+
+    test "returns an error tuple for top-level defimpl blocks with empty options" do
+      source = """
+      defimpl String.Chars, [] do
+        def to_string(_), do: "ok"
       end
       """
 
