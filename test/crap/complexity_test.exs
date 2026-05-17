@@ -614,6 +614,33 @@ defmodule Crap.ComplexityTest do
               ]} = Crap.Complexity.from_string(source)
     end
 
+    test "allows bodyless declaration heads when implementation clauses exist" do
+      source = """
+      defmodule Example do
+        def assert_has(session, selector, opts_or_text)
+
+        def assert_has(session, selector, opts) when is_list(opts) do
+          {session, selector, opts}
+        end
+
+        def assert_has(session, selector, text) do
+          {session, selector, text}
+        end
+      end
+      """
+
+      assert {:ok,
+              [
+                %{
+                  module: Example,
+                  function: :assert_has,
+                  arity: 3,
+                  line: 4,
+                  complexity: 2
+                }
+              ]} = Crap.Complexity.from_string(source)
+    end
+
     test "returns an error tuple for bodyless supported definitions inside modules" do
       for definition <- ["def", "defp", "defmacro", "defmacrop"] do
         source = """
@@ -635,6 +662,27 @@ defmodule Crap.ComplexityTest do
         """
 
         assert {:error, :invalid_source} = Crap.Complexity.from_string(source)
+      end
+    end
+
+    test "returns an error tuple for malformed supported definition heads" do
+      for definition <- ["def", "defp", "defmacro", "defmacrop"] do
+        bodyless_source = """
+        defmodule Bad do
+          #{definition} 123
+        end
+        """
+
+        bodied_source = """
+        defmodule Bad do
+          #{definition} 123 do
+            :ok
+          end
+        end
+        """
+
+        assert {:error, :invalid_source} = Crap.Complexity.from_string(bodyless_source)
+        assert {:error, :invalid_source} = Crap.Complexity.from_string(bodied_source)
       end
     end
 

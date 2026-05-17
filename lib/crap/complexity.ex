@@ -132,56 +132,97 @@ defmodule Crap.Complexity do
   defp functions(_quoted, _module, _local_protocols, _local_modules), do: []
 
   defp malformed_executable_container?(quoted),
-    do: malformed_executable_container?(quoted, nil, false)
+    do: malformed_executable_container?(quoted, nil, false, MapSet.new())
 
   defp malformed_executable_container?(
          {:defmodule, _meta, [module_ast, [do: body]]},
          current_module,
-         _in_executable?
+         _in_executable?,
+         _implemented_definitions
        ) do
     not module_alias?(module_ast) ||
-      malformed_executable_container?(body, module_name(module_ast, current_module), true)
+      malformed_executable_container?(
+        body,
+        module_name(module_ast, current_module),
+        true,
+        implemented_definitions(body)
+      )
   end
 
   defp malformed_executable_container?(
          {:defmodule, _meta, _args},
          _current_module,
-         _in_executable?
+         _in_executable?,
+         _implemented_definitions
        ),
        do: true
 
   defp malformed_executable_container?(
          {:defimpl, _meta, args},
          current_module,
-         _in_executable?
+         _in_executable?,
+         _implemented_definitions
        ) do
     case defimpl_parts(args, current_module) do
       {:ok, protocol_ast, for_ast, body} ->
         not defimpl_name_ast?(protocol_ast, for_ast) ||
-          malformed_executable_container?(body, current_module, true)
+          malformed_executable_container?(
+            body,
+            current_module,
+            true,
+            implemented_definitions(body)
+          )
 
       :error ->
         true
     end
   end
 
-  defp malformed_executable_container?({kind, _meta, [_head]}, _current_module, true)
+  defp malformed_executable_container?(
+         {kind, _meta, [head]},
+         _current_module,
+         true,
+         implemented_definitions
+       )
        when kind in @definition_kinds do
-    true
+    case definition_key(head) do
+      {:ok, key} -> not MapSet.member?(implemented_definitions, key)
+      :error -> true
+    end
   end
 
-  defp malformed_executable_container?({kind, _meta, [_head, [do: body]]}, current_module, true)
+  defp malformed_executable_container?(
+         {kind, _meta, [head, [do: body]]},
+         current_module,
+         true,
+         _implemented_definitions
+       )
        when kind in @definition_kinds do
-    malformed_executable_container?(body, current_module, false)
+    case definition_key(head) do
+      {:ok, _key} -> malformed_executable_container?(body, current_module, false, MapSet.new())
+      :error -> true
+    end
   end
 
-  defp malformed_executable_container?({branch, _meta, args}, current_module, in_executable?)
+  defp malformed_executable_container?(
+         {branch, _meta, args},
+         current_module,
+         in_executable?,
+         implemented_definitions
+       )
        when branch in [:if, :unless] do
     case List.last(args) do
       branches when is_list(branches) ->
         branches
         |> Keyword.values()
-        |> Enum.any?(&malformed_executable_container?(&1, current_module, in_executable?))
+        |> Enum.any?(
+          &malformed_executable_container?(
+            &1,
+            current_module,
+            in_executable?,
+            implemented_definitions
+          )
+        )
 
       _other ->
         false
@@ -191,19 +232,91 @@ defmodule Crap.Complexity do
   defp malformed_executable_container?(
          {:__block__, _meta, expressions},
          current_module,
-         in_executable?
+         in_executable?,
+         implemented_definitions
        ) do
-    Enum.any?(expressions, &malformed_executable_container?(&1, current_module, in_executable?))
+    Enum.any?(
+      expressions,
+      &malformed_executable_container?(
+        &1,
+        current_module,
+        in_executable?,
+        implemented_definitions
+      )
+    )
   end
 
-  defp malformed_executable_container?(list, current_module, in_executable?) when is_list(list) do
-    Enum.any?(list, &malformed_executable_container?(&1, current_module, in_executable?))
+  defp malformed_executable_container?(
+         list,
+         current_module,
+         in_executable?,
+         implemented_definitions
+       )
+       when is_list(list) do
+    Enum.any?(
+      list,
+      &malformed_executable_container?(
+        &1,
+        current_module,
+        in_executable?,
+        implemented_definitions
+      )
+    )
   end
 
-  defp malformed_executable_container?(_quoted, _current_module, _in_executable?), do: false
+  defp malformed_executable_container?(
+         _quoted,
+         _current_module,
+         _in_executable?,
+         _implemented_definitions
+       ),
+       do: false
 
   defp module_alias?({:__aliases__, _meta, parts}) when is_list(parts), do: true
   defp module_alias?(_ast), do: false
+
+  defp implemented_definitions(body) do
+    body
+    |> definitions_with_bodies()
+    |> MapSet.new()
+  end
+
+  defp definitions_with_bodies({:__block__, _meta, expressions}) do
+    Enum.flat_map(expressions, &definitions_with_bodies/1)
+  end
+
+  defp definitions_with_bodies({kind, _meta, [head, [do: _body]]})
+       when kind in @definition_kinds do
+    case definition_key(head) do
+      {:ok, key} -> [key]
+      :error -> []
+    end
+  end
+
+  defp definitions_with_bodies({branch, _meta, args}) when branch in [:if, :unless] do
+    case List.last(args) do
+      branches when is_list(branches) ->
+        branches
+        |> Keyword.values()
+        |> Enum.flat_map(&definitions_with_bodies/1)
+
+      _other ->
+        []
+    end
+  end
+
+  defp definitions_with_bodies(list) when is_list(list),
+    do: Enum.flat_map(list, &definitions_with_bodies/1)
+
+  defp definitions_with_bodies(_quoted), do: []
+
+  defp definition_key({:when, _meta, [head | _guards]}), do: definition_key(head)
+  defp definition_key({name, _meta, nil}) when is_atom(name), do: {:ok, {name, 0}}
+
+  defp definition_key({name, _meta, args}) when is_atom(name) and is_list(args),
+    do: {:ok, {name, length(args)}}
+
+  defp definition_key(_head), do: :error
 
   defp local_protocol_modules({:__block__, _meta, expressions}, current_module) do
     Enum.flat_map(expressions, &local_protocol_modules(&1, current_module))
