@@ -148,7 +148,10 @@ defmodule Crap.Complexity do
   defp module_name({:__aliases__, _meta, parts}, parent), do: Module.concat([parent | parts])
 
   defp defimpl_module_name(protocol_ast, for_ast, current_module) do
-    Module.concat([module_name(protocol_ast, current_module), module_name(for_ast, current_module)])
+    Module.concat([
+      module_name(protocol_ast, current_module),
+      module_name(for_ast, current_module)
+    ])
   end
 
   defp function_name_arity_and_guards({:when, _meta, [head | guards]}) do

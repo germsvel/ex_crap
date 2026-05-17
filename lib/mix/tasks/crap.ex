@@ -93,7 +93,9 @@ defmodule Mix.Tasks.Crap do
         Mix.raise("Invalid --max-score: #{value}. Expected a positive number.")
 
       {:error, {path, reason}} ->
-        Mix.raise("Unable to analyze source file #{Path.relative_to(path, root)}: #{inspect(reason)}")
+        Mix.raise(
+          "Unable to analyze source file #{Path.relative_to(path, root)}: #{inspect(reason)}"
+        )
 
       {:error, reason} ->
         Mix.raise("Unable to calculate CRAP report: #{inspect(reason)}")
