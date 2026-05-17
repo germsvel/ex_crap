@@ -69,8 +69,16 @@ defmodule Crap.Complexity do
 
   defp functions({:defimpl, _meta, [protocol_ast, opts, [do: body]]}, current_module)
        when is_list(opts) do
-    module = defimpl_module_name(protocol_ast, Keyword.fetch!(opts, :for), current_module)
-    functions(body, module)
+    protocol_ast
+    |> defimpl_module_names(Keyword.fetch!(opts, :for), current_module)
+    |> Enum.flat_map(&functions(body, &1))
+  end
+
+  defp functions({:defimpl, _meta, [protocol_ast, [do: body]]}, current_module)
+       when not is_nil(current_module) do
+    protocol_ast
+    |> defimpl_module_names(current_module, current_module)
+    |> Enum.flat_map(&functions(body, &1))
   end
 
   defp functions({kind, meta, [head, [do: body]]}, module) when kind in @definition_kinds do
@@ -107,29 +115,86 @@ defmodule Crap.Complexity do
 
   defp functions(_quoted, _module), do: []
 
-  defp malformed_executable_container?({:defmodule, _meta, [_, [do: body]]}) do
-    malformed_executable_container?(body)
+  defp malformed_executable_container?(quoted),
+    do: malformed_executable_container?(quoted, nil, false)
+
+  defp malformed_executable_container?(
+         {:defmodule, _meta, [module_ast, [do: body]]},
+         current_module,
+         _in_executable?
+       ) do
+    malformed_executable_container?(body, module_name(module_ast, current_module), true)
   end
 
-  defp malformed_executable_container?({:defmodule, _meta, _args}), do: true
+  defp malformed_executable_container?(
+         {:defmodule, _meta, _args},
+         _current_module,
+         _in_executable?
+       ),
+       do: true
 
-  defp malformed_executable_container?({:defimpl, _meta, [_, opts, [do: body]]})
+  defp malformed_executable_container?(
+         {:defimpl, _meta, [_, opts, [do: body]]},
+         current_module,
+         _in_executable?
+       )
        when is_list(opts) do
     not Keyword.has_key?(opts, :for) ||
-      malformed_executable_container?(body)
+      malformed_executable_container?(body, current_module, true)
   end
 
-  defp malformed_executable_container?({:defimpl, _meta, _args}), do: true
-
-  defp malformed_executable_container?({:__block__, _meta, expressions}) do
-    Enum.any?(expressions, &malformed_executable_container?/1)
+  defp malformed_executable_container?(
+         {:defimpl, _meta, [_, [do: body]]},
+         current_module,
+         _in_executable?
+       )
+       when not is_nil(current_module) do
+    malformed_executable_container?(body, current_module, true)
   end
 
-  defp malformed_executable_container?(list) when is_list(list) do
-    Enum.any?(list, &malformed_executable_container?/1)
+  defp malformed_executable_container?(
+         {:defimpl, _meta, _args},
+         _current_module,
+         _in_executable?
+       ),
+       do: true
+
+  defp malformed_executable_container?({kind, _meta, [_head]}, _current_module, true)
+       when kind in @definition_kinds do
+    true
   end
 
-  defp malformed_executable_container?(_quoted), do: false
+  defp malformed_executable_container?({kind, _meta, [_head, [do: body]]}, current_module, true)
+       when kind in @definition_kinds do
+    malformed_executable_container?(body, current_module, false)
+  end
+
+  defp malformed_executable_container?({branch, _meta, args}, current_module, in_executable?)
+       when branch in [:if, :unless] do
+    case List.last(args) do
+      branches when is_list(branches) ->
+        branches
+        |> Keyword.values()
+        |> Enum.any?(&malformed_executable_container?(&1, current_module, in_executable?))
+
+      _other ->
+        false
+    end
+  end
+
+  defp malformed_executable_container?(
+         {:__block__, _meta, expressions},
+         current_module,
+         in_executable?
+       ) do
+    Enum.any?(expressions, &malformed_executable_container?(&1, current_module, in_executable?))
+  end
+
+  defp malformed_executable_container?(list, current_module, in_executable?) when is_list(list) do
+    Enum.any?(list, &malformed_executable_container?(&1, current_module, in_executable?))
+  end
+
+  defp malformed_executable_container?(_quoted, _current_module, _in_executable?), do: false
 
   defp aggregate_clauses(functions) do
     functions
@@ -147,11 +212,20 @@ defmodule Crap.Complexity do
   defp module_name({:__aliases__, _meta, parts}, nil), do: Module.concat(parts)
   defp module_name({:__aliases__, _meta, parts}, parent), do: Module.concat([parent | parts])
 
+  defp defimpl_module_names(protocol_ast, for_ast, current_module) when is_list(for_ast) do
+    Enum.map(for_ast, &defimpl_module_name(protocol_ast, &1, current_module))
+  end
+
+  defp defimpl_module_names(protocol_ast, for_ast, current_module) do
+    [defimpl_module_name(protocol_ast, for_ast, current_module)]
+  end
+
+  defp defimpl_module_name(protocol_ast, for_module, _current_module) when is_atom(for_module) do
+    Module.concat([module_name(protocol_ast, nil), for_module])
+  end
+
   defp defimpl_module_name(protocol_ast, for_ast, current_module) do
-    Module.concat([
-      module_name(protocol_ast, current_module),
-      module_name(for_ast, current_module)
-    ])
+    Module.concat([module_name(protocol_ast, nil), module_name(for_ast, current_module)])
   end
 
   defp function_name_arity_and_guards({:when, _meta, [head | guards]}) do

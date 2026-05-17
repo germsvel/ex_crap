@@ -416,6 +416,53 @@ defmodule Crap.ComplexityTest do
               ]} = Crap.Complexity.from_string(source)
     end
 
+    test "analyzes defimpl blocks for multiple target modules" do
+      source = """
+      defimpl String.Chars, for: [Example.One, Example.Two] do
+        def to_string(value), do: inspect(value)
+      end
+      """
+
+      assert {:ok, results} = Crap.Complexity.from_string(source)
+
+      assert Enum.map(results, &Map.take(&1, [:module, :function, :arity, :complexity])) == [
+               %{module: String.Chars.Example.One, function: :to_string, arity: 1, complexity: 1},
+               %{module: String.Chars.Example.Two, function: :to_string, arity: 1, complexity: 1}
+             ]
+    end
+
+    test "analyzes nested defimpl blocks without explicit for target" do
+      source = """
+      defmodule Example do
+        defimpl String.Chars do
+          def to_string(value), do: inspect(value)
+        end
+      end
+      """
+
+      assert {:ok,
+              [
+                %{
+                  module: String.Chars.Example,
+                  function: :to_string,
+                  arity: 1,
+                  complexity: 1
+                }
+              ]} = Crap.Complexity.from_string(source)
+    end
+
+    test "returns an error tuple for bodyless supported definitions inside modules" do
+      for definition <- ["def", "defp", "defmacro", "defmacrop"] do
+        source = """
+        defmodule Bad do
+          #{definition} run(arg)
+        end
+        """
+
+        assert {:error, :invalid_source} = Crap.Complexity.from_string(source)
+      end
+    end
+
     test "returns an error tuple for incomplete supported executable containers" do
       assert {:error, :invalid_source} = Crap.Complexity.from_string("defmodule Foo")
 
