@@ -2,7 +2,7 @@
 
 > **STATUS: COMPLETE** — All tasks in this plan were implemented and merged as of 2026-05-17. The `try` snippet in Task 4 Step 2 is superseded by `docs/superpowers/plans/2026-05-17-fix-try-else-complexity-and-test-name.md`. Do not re-execute this plan.
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **ARCHIVAL NOTE:** This completed plan is retained for historical context only. Do not execute this plan; use follow-up plans for any new work.
 
 **Goal:** Make `Crap.Complexity` a more trustworthy Elixir cyclomatic complexity input for CRAP scoring by covering common Elixir decision forms, guards, multi-clause functions, and macros, while keeping the canonical CRAP formula unchanged.
 
@@ -31,7 +31,7 @@
 - Modify: `test/crap/complexity_test.exs`
 - Modify: `lib/crap/complexity.ex`
 
-- [ ] **Step 1: Add a failing test for symbolic boolean operators**
+- [x] **Step 1: Add a failing test for symbolic boolean operators**
 
 Add this test after the existing test named `"counts if, unless, and boolean operators as decision points"` in `test/crap/complexity_test.exs`:
 
@@ -49,13 +49,13 @@ test "counts symbolic boolean operators as decision points" do
 end
 ```
 
-- [ ] **Step 2: Run the targeted test and verify it fails**
+- [x] **Step 2: Run the targeted test and verify it fails**
 
 Run: `mix test test/crap/complexity_test.exs --trace`
 
 Expected: FAIL because the function currently has complexity `1` or `2`, not `3`, since `&&` and `||` are not counted.
 
-- [ ] **Step 3: Count symbolic boolean operators**
+- [x] **Step 3: Count symbolic boolean operators**
 
 In `lib/crap/complexity.ex`, replace:
 
@@ -73,7 +73,7 @@ defp decision_count({operator, _meta, args}) when operator in [:and, :or, :&&, :
 end
 ```
 
-- [ ] **Step 4: Update module docs for boolean operators**
+- [x] **Step 4: Update module docs for boolean operators**
 
 In `lib/crap/complexity.ex`, replace this bullet:
 
@@ -87,13 +87,13 @@ with:
 * Boolean `and`, `or`, `&&`, and `||` operators add `1` each.
 ```
 
-- [ ] **Step 5: Run the targeted tests**
+- [x] **Step 5: Run the targeted tests**
 
 Run: `mix test test/crap/complexity_test.exs --trace`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/crap/complexity.ex test/crap/complexity_test.exs
@@ -108,7 +108,7 @@ git commit -m "Count symbolic boolean operators in complexity"
 - Modify: `test/crap/complexity_test.exs`
 - Modify: `lib/crap/complexity.ex`
 
-- [ ] **Step 1: Add a failing test for guard boolean logic**
+- [x] **Step 1: Add a failing test for guard boolean logic**
 
 Add this test after the symbolic boolean operator test in `test/crap/complexity_test.exs`:
 
@@ -126,13 +126,13 @@ test "counts guard boolean operators as decision points" do
 end
 ```
 
-- [ ] **Step 2: Run the targeted test and verify it fails**
+- [x] **Step 2: Run the targeted test and verify it fails**
 
 Run: `mix test test/crap/complexity_test.exs --trace`
 
 Expected: FAIL because guards are currently stripped in `function_name_and_arity/1` and not counted.
 
-- [ ] **Step 3: Introduce a helper for function head parsing**
+- [x] **Step 3: Introduce a helper for function head parsing**
 
 In `lib/crap/complexity.ex`, replace the function discovery clause:
 
@@ -192,7 +192,7 @@ defp function_name_arity_and_guards({name, _meta, nil}) when is_atom(name), do: 
 defp function_name_arity_and_guards({name, _meta, args}) when is_atom(name), do: {name, length(args), []}
 ```
 
-- [ ] **Step 4: Update module docs for guards**
+- [x] **Step 4: Update module docs for guards**
 
 In `lib/crap/complexity.ex`, add this bullet after the boolean operator bullet:
 
@@ -200,13 +200,13 @@ In `lib/crap/complexity.ex`, add this bullet after the boolean operator bullet:
 * Boolean operators in function guards add `1` each.
 ```
 
-- [ ] **Step 5: Run targeted tests**
+- [x] **Step 5: Run targeted tests**
 
 Run: `mix test test/crap/complexity_test.exs --trace`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/crap/complexity.ex test/crap/complexity_test.exs
@@ -221,7 +221,7 @@ git commit -m "Count guard decisions in complexity"
 - Modify: `test/crap/complexity_test.exs`
 - Modify: `lib/crap/complexity.ex`
 
-- [ ] **Step 1: Replace the existing multi-clause expectation**
+- [x] **Step 1: Replace the existing multi-clause expectation**
 
 In `test/crap/complexity_test.exs`, in the test named `"handles multiple functions and aggregates same name and arity clauses"`, replace the expected `:size` result:
 
@@ -249,7 +249,7 @@ assert Enum.find(results, &(&1.function == :size)) == %{
 
 This reflects one path for each clause and one `if` decision in the second clause.
 
-- [ ] **Step 2: Add a failing test for guard-only multi-clause branching**
+- [x] **Step 2: Add a failing test for guard-only multi-clause branching**
 
 Add this test after the existing multi-clause test:
 
@@ -268,13 +268,13 @@ test "counts multiple guarded clauses as function-level decision paths" do
 end
 ```
 
-- [ ] **Step 3: Run targeted tests and verify failure**
+- [x] **Step 3: Run targeted tests and verify failure**
 
 Run: `mix test test/crap/complexity_test.exs --trace`
 
 Expected: FAIL because `aggregate_clauses/1` currently keeps only max clause complexity.
 
-- [ ] **Step 4: Change clause aggregation to function-level total**
+- [x] **Step 4: Change clause aggregation to function-level total**
 
 In `lib/crap/complexity.ex`, replace:
 
@@ -310,7 +310,7 @@ end
 
 Rationale: each clause contributes one possible path plus its guard/body decisions, while coverage remains joined at the function/arity level.
 
-- [ ] **Step 5: Update module docs for clause aggregation**
+- [x] **Step 5: Update module docs for clause aggregation**
 
 In `lib/crap/complexity.ex`, replace:
 
@@ -326,13 +326,13 @@ with:
   summing one path per clause plus each clause's guard/body decisions.
 ```
 
-- [ ] **Step 6: Run targeted tests**
+- [x] **Step 6: Run targeted tests**
 
 Run: `mix test test/crap/complexity_test.exs --trace`
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add lib/crap/complexity.ex test/crap/complexity_test.exs
@@ -347,7 +347,7 @@ git commit -m "Aggregate multi-clause complexity by function"
 - Modify: `test/crap/complexity_test.exs`
 - Modify: `lib/crap/complexity.ex`
 
-- [ ] **Step 1: Add a failing test for `with` and `else` branches**
+- [x] **Step 1: Add a failing test for `with` and `else` branches**
 
 Add this test after the `case` / `cond` test:
 
@@ -373,7 +373,7 @@ end
 
 Expected count: base `1`, two `<-` generators, two `else` clauses.
 
-- [ ] **Step 2: Add a failing test for `try` / `rescue` / `catch` / `after`**
+- [x] **Step 2: Add a failing test for `try` / `rescue` / `catch` / `after`**
 
 Add this test after the `with` test:
 
@@ -402,7 +402,7 @@ end
 
 Expected count: base `1`, `try` itself, two rescue clauses, one catch clause. Do not count `after` as a separate path because it always runs.
 
-- [ ] **Step 3: Add a failing test for comprehensions**
+- [x] **Step 3: Add a failing test for comprehensions**
 
 Add this test after the `try` test:
 
@@ -422,7 +422,7 @@ end
 
 Expected count: base `1`, one generator, two filters.
 
-- [ ] **Step 4: Add a failing test for `receive` clauses**
+- [x] **Step 4: Add a failing test for `receive` clauses**
 
 Add this test after the comprehension test:
 
@@ -447,13 +447,13 @@ end
 
 Expected count: base `1`, two receive clauses, one timeout branch.
 
-- [ ] **Step 5: Run targeted tests and verify failures**
+- [x] **Step 5: Run targeted tests and verify failures**
 
 Run: `mix test test/crap/complexity_test.exs --trace`
 
 Expected: FAIL because `with`, `try`, `for`, and `receive` are not yet counted.
 
-- [ ] **Step 6: Add helpers for keyword AST access and arrow clause counting**
+- [x] **Step 6: Add helpers for keyword AST access and arrow clause counting**
 
 In `lib/crap/complexity.ex`, replace the existing `branch_count/1` helper:
 
@@ -496,7 +496,7 @@ defp arrow_count({:->, _meta, _clause}), do: 1
 defp arrow_count(_other), do: 0
 ```
 
-- [ ] **Step 7: Count `with` generators and `else` clauses**
+- [x] **Step 7: Count `with` generators and `else` clauses**
 
 Add these clauses above the generic `decision_count({_name, _meta, args})` clause in `lib/crap/complexity.ex`:
 
@@ -516,7 +516,7 @@ Add this helper near `branch_count/1`:
 defp generator_count(args), do: Enum.count(args, &match?({:<-, _meta, _args}, &1))
 ```
 
-- [ ] **Step 8: Count `try` rescue/catch clauses**
+- [x] **Step 8: Count `try` rescue/catch clauses**
 
 Add this clause above the generic `decision_count({_name, _meta, args})` clause:
 
@@ -527,7 +527,7 @@ defp decision_count({:try, _meta, args}) do
 end
 ```
 
-- [ ] **Step 9: Count comprehensions**
+- [x] **Step 9: Count comprehensions**
 
 Add this clause above the generic `decision_count({_name, _meta, args})` clause:
 
@@ -549,7 +549,7 @@ defp comprehension_qualifier_count(args) do
 end
 ```
 
-- [ ] **Step 10: Count `receive` clauses and timeout branch**
+- [x] **Step 10: Count `receive` clauses and timeout branch**
 
 Add this clause above the generic `decision_count({_name, _meta, args})` clause:
 
@@ -565,7 +565,7 @@ Add this helper near `branch_count/1`:
 defp receive_after_count(args), do: if(keyword_value(args, :after), do: 1, else: 0)
 ```
 
-- [ ] **Step 11: Update module docs for additional control flow**
+- [x] **Step 11: Update module docs for additional control flow**
 
 In `lib/crap/complexity.ex`, add these bullets after the `case` / `cond` bullet:
 
@@ -576,13 +576,13 @@ In `lib/crap/complexity.ex`, add these bullets after the `case` / `cond` bullet:
 * Each `receive` branch adds `1`; an `after` timeout branch adds `1`.
 ```
 
-- [ ] **Step 12: Run targeted tests**
+- [x] **Step 12: Run targeted tests**
 
 Run: `mix test test/crap/complexity_test.exs --trace`
 
 Expected: PASS.
 
-- [ ] **Step 13: Commit**
+- [x] **Step 13: Commit**
 
 ```bash
 git add lib/crap/complexity.ex test/crap/complexity_test.exs
@@ -597,7 +597,7 @@ git commit -m "Count common Elixir control flow in complexity"
 - Modify: `test/crap/complexity_test.exs`
 - Modify: `lib/crap/complexity.ex`
 
-- [ ] **Step 1: Add a failing test for macro discovery**
+- [x] **Step 1: Add a failing test for macro discovery**
 
 Add this test after the multi-clause tests:
 
@@ -635,13 +635,13 @@ test "discovers defmacro and defmacrop definitions" do
 end
 ```
 
-- [ ] **Step 2: Run targeted tests and verify failure**
+- [x] **Step 2: Run targeted tests and verify failure**
 
 Run: `mix test test/crap/complexity_test.exs --trace`
 
 Expected: FAIL because only `def` and `defp` are currently discovered.
 
-- [ ] **Step 3: Add module attributes for definition kinds**
+- [x] **Step 3: Add module attributes for definition kinds**
 
 In `lib/crap/complexity.ex`, after the `@moduledoc` block and before `@doc`, add:
 
@@ -661,7 +661,7 @@ with:
 defp functions({kind, meta, [head, [do: body]]}, module) when kind in @definition_kinds do
 ```
 
-- [ ] **Step 4: Update module docs for macro discovery**
+- [x] **Step 4: Update module docs for macro discovery**
 
 In `lib/crap/complexity.ex`, replace:
 
@@ -675,13 +675,13 @@ with:
 * Each discovered `def`, `defp`, `defmacro`, or `defmacrop` starts with base complexity `1`.
 ```
 
-- [ ] **Step 5: Run targeted tests**
+- [x] **Step 5: Run targeted tests**
 
 Run: `mix test test/crap/complexity_test.exs --trace`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/crap/complexity.ex test/crap/complexity_test.exs
@@ -695,7 +695,7 @@ git commit -m "Discover macros in complexity analysis"
 **Files:**
 - Modify: `README.md`
 
-- [ ] **Step 1: Update README description**
+- [x] **Step 1: Update README description**
 
 In `README.md`, replace:
 
@@ -709,7 +709,7 @@ with:
 CRAP is an Elixir library and Mix task for calculating Change Risk Anti-Patterns scores from cyclomatic complexity and test coverage. It is a prioritization signal for uncovered complexity, not a complete code-quality or maintainability measure.
 ```
 
-- [ ] **Step 2: Update stale missing-coverage behavior**
+- [x] **Step 2: Update stale missing-coverage behavior**
 
 In `README.md`, replace:
 
@@ -727,7 +727,7 @@ The report includes file, module, function/arity, complexity, coverage, CRAP sco
 The task fails with a non-zero exit status when any scored function is above the configured threshold or any score calculation error occurs. Missing coverdata input remains a usage error because no CRAP scores can be calculated without an importable coverage file.
 ```
 
-- [ ] **Step 3: Add a metric limitations section**
+- [x] **Step 3: Add a metric limitations section**
 
 After the Mix task section and before `## Deferred Work`, add:
 
@@ -739,13 +739,13 @@ CRAP combines function-level cyclomatic complexity with function-level coverage 
 Cyclomatic complexity is only a proxy for path and test burden. It does not measure naming, cohesion, coupling, domain complexity, readability, code smells, or whether tests contain meaningful assertions. Treat high CRAP scores as a queue for investigation: add meaningful tests, simplify the function, or test before refactoring risky legacy code.
 ```
 
-- [ ] **Step 4: Verify README text**
+- [x] **Step 4: Verify README text**
 
 Run: `mix test`
 
 Expected: PASS. README changes do not directly affect tests, but the full test suite should still pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add README.md
@@ -762,19 +762,19 @@ git commit -m "Document CRAP metric interpretation"
 - Verify: `lib/mix/tasks/crap.ex`
 - Verify: `test/**/*.exs`
 
-- [ ] **Step 1: Run the full test suite**
+- [x] **Step 1: Run the full test suite**
 
 Run: `mix test`
 
 Expected: PASS.
 
-- [ ] **Step 2: Run formatter check**
+- [x] **Step 2: Run formatter check**
 
 Run: `mix format --check-formatted`
 
 Expected: PASS.
 
-- [ ] **Step 3: Verify help text still describes threshold and missing coverage correctly**
+- [x] **Step 3: Verify help text still describes threshold and missing coverage correctly**
 
 Run: `mix help crap`
 
@@ -790,13 +790,13 @@ Expected output includes:
 Missing function coverage is scored as 0%.
 ```
 
-- [ ] **Step 4: Verify public scoring formula remains unchanged**
+- [x] **Step 4: Verify public scoring formula remains unchanged**
 
 Run: `mix test test/crap_test.exs --trace`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit any verification-only formatting changes**
+- [x] **Step 5: Commit any verification-only formatting changes**
 
 If `mix format` modified files, run:
 
