@@ -73,6 +73,65 @@ defmodule Mix.Tasks.CrapTest do
       end)
     end
 
+    test "prints guidance when source files have no analyzable function bodies" do
+      in_tmp("crap-no-analyzable-functions", fn ->
+        File.mkdir_p!("lib")
+
+        File.write!("lib/driver.ex", """
+        defprotocol Example.Driver do
+          def visit(initial_struct, path)
+        end
+        """)
+
+        output = capture_io(fn -> Mix.Tasks.Crap.run([]) end)
+
+        assert output =~ "No analyzable function bodies found in root lib/**/*.ex files"
+        refute output =~ "No coverage data found"
+        refute output =~ "invalid_source"
+      end)
+    end
+
+    test "requires coverage when at least one analyzable function exists" do
+      in_tmp("crap-mixed-source-no-coverage", fn ->
+        File.mkdir_p!("lib")
+
+        File.write!("lib/a_driver.ex", """
+        defprotocol Example.Driver do
+          def visit(initial_struct, path)
+        end
+        """)
+
+        File.write!("lib/b_example.ex", """
+        defmodule Example do
+          def ok, do: :ok
+        end
+        """)
+
+        output =
+          capture_io(fn ->
+            assert_raise Mix.Error, ~r/Coverage data is missing/, fn ->
+              Mix.Tasks.Crap.run([])
+            end
+          end)
+
+        assert output =~ "No coverage data found"
+        refute output =~ "No analyzable function bodies found"
+      end)
+    end
+
+    test "raises a source analysis error for invalid source" do
+      in_tmp("crap-invalid-source", fn ->
+        File.mkdir_p!("lib")
+        File.write!("lib/bad.ex", "defmodule")
+
+        assert_raise Mix.Error,
+                     ~r/Unable to analyze source file lib\/bad\.ex: :invalid_source/,
+                     fn ->
+                       Mix.Tasks.Crap.run([])
+                     end
+      end)
+    end
+
     test "prints coverage guidance and raises when source exists but no coverage data is available" do
       in_tmp("crap-no-coverage", fn ->
         File.mkdir_p!("lib")

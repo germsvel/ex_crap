@@ -19,10 +19,12 @@ defmodule Mix.Tasks.Crap do
   a coverage report, but does not leave importable coverage data for a later
   `mix crap` run.
 
-  The task scans only root `lib/**/*.ex` files. The default maximum CRAP score is
-  30 (default: 30). Use `--max-score N` to override it. The task fails when any
-  function exceeds the threshold or has score calculation errors. Missing function
-  coverage is scored as 0%. Missing coverdata input is still a usage error.
+  The task scans only root `lib/**/*.ex` files and skips valid files with no
+  analyzable function or macro bodies, such as callback-only protocols and
+  behaviour modules. The default maximum CRAP score is 30 (default: 30). Use
+  `--max-score N` to override it. The task fails when any function exceeds the
+  threshold or has score calculation errors. Missing function coverage is scored as 0%.
+  Missing coverdata input is a usage error when analyzable functions exist.
   """
 
   @impl Mix.Task
@@ -50,10 +52,12 @@ defmodule Mix.Tasks.Crap do
 
   defp run_report(opts) do
     root = File.cwd!()
+    source_files = Crap.Scanner.source_files(root)
 
     with {:ok, max_score} <- max_score(opts),
+         :ok <- ensure_source_files(source_files),
          {:ok, functions} <- Crap.Scanner.analyze(root),
-         :ok <- ensure_source_files(functions),
+         :ok <- ensure_analyzable_functions(functions),
          {:ok, coverdata_path} <- coverdata_path(opts, root),
          {:ok, coverage} <- Crap.Coverage.from_coverdata(coverdata_path) do
       rows = Crap.Report.rows(functions, coverage, root)
@@ -62,6 +66,9 @@ defmodule Mix.Tasks.Crap do
     else
       {:no_source_files, pattern} ->
         Mix.shell().info("No root #{pattern} files found.")
+
+      {:no_analyzable_functions, pattern} ->
+        Mix.shell().info("No analyzable function bodies found in root #{pattern} files.")
 
       {:error, :no_coverdata} ->
         Mix.shell().info("""
@@ -85,13 +92,19 @@ defmodule Mix.Tasks.Crap do
       {:error, {:invalid_max_score, value}} ->
         Mix.raise("Invalid --max-score: #{value}. Expected a positive number.")
 
+      {:error, {path, reason}} ->
+        Mix.raise("Unable to analyze source file #{Path.relative_to(path, root)}: #{inspect(reason)}")
+
       {:error, reason} ->
         Mix.raise("Unable to calculate CRAP report: #{inspect(reason)}")
     end
   end
 
   defp ensure_source_files([]), do: {:no_source_files, "lib/**/*.ex"}
-  defp ensure_source_files(_functions), do: :ok
+  defp ensure_source_files(_source_files), do: :ok
+
+  defp ensure_analyzable_functions([]), do: {:no_analyzable_functions, "lib/**/*.ex"}
+  defp ensure_analyzable_functions(_functions), do: :ok
 
   defp coverdata_path(opts, root) do
     case Keyword.fetch(opts, :coverdata) do
