@@ -13,7 +13,7 @@ defmodule Crap.Complexity do
   * Each `case` branch adds `1`.
   * Each `cond` clause adds `1`.
   * Each `with` generator and `else` branch adds `1`.
-  * `try` adds `1`; each `rescue` and `catch` clause adds `1`.
+  * `try` adds `1`; each `else`, `rescue`, and `catch` clause adds `1`.
   * Each `for` generator and filter adds `1`.
   * Each `receive` branch adds `1`; an `after` timeout branch adds `1`.
   * Boolean `and`, `or`, `&&`, and `||` operators add `1` each.
@@ -141,8 +141,8 @@ defmodule Crap.Complexity do
   end
 
   defp decision_count({:try, _meta, args}) do
-    1 + arrow_count(keyword_value(args, :rescue)) + arrow_count(keyword_value(args, :catch)) +
-      decision_count(args)
+    1 + arrow_count(keyword_value(args, :else)) + arrow_count(keyword_value(args, :rescue)) +
+      arrow_count(keyword_value(args, :catch)) + decision_count(args)
   end
 
   defp decision_count({:for, _meta, args}) do

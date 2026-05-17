@@ -119,6 +119,25 @@ defmodule Crap.ComplexityTest do
       assert {:ok, [%{complexity: 5}]} = Crap.Complexity.from_string(source)
     end
 
+    test "counts try else clauses as decision points" do
+      source = """
+      defmodule Example do
+        def parse(value) do
+          try do
+            decode(value)
+          else
+            {:ok, decoded} -> decoded
+            :error -> nil
+          rescue
+            ArgumentError -> :bad_argument
+          end
+        end
+      end
+      """
+
+      assert {:ok, [%{complexity: 5}]} = Crap.Complexity.from_string(source)
+    end
+
     test "counts comprehension generators and filters as decision points" do
       source = """
       defmodule Example do
