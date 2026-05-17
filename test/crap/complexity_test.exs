@@ -34,6 +34,18 @@ defmodule Crap.ComplexityTest do
       assert [%{complexity: 5}] = results
     end
 
+    test "counts symbolic boolean operators as decision points" do
+      source = """
+      defmodule Example do
+        def allowed?(user) do
+          user.active? && user.confirmed? || user.admin?
+        end
+      end
+      """
+
+      assert {:ok, [%{complexity: 3}]} = Crap.Complexity.from_string(source)
+    end
+
     test "counts each case branch and cond clause as a decision point" do
       source = """
       defmodule Example do

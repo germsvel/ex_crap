@@ -12,7 +12,7 @@ defmodule Crap.Complexity do
   * Each `if` and `unless` adds `1`.
   * Each `case` branch adds `1`.
   * Each `cond` clause adds `1`.
-  * Boolean `and` and `or` operators in function bodies add `1` each.
+  * Boolean `and`, `or`, `&&`, and `||` operators add `1` each.
   * Multiple clauses for the same `{module, function, arity}` are aggregated by
     keeping the maximum clause complexity and earliest line number.
   """
@@ -106,7 +106,7 @@ defmodule Crap.Complexity do
 
   defp decision_count({:->, _meta, [_patterns, body]}), do: decision_count(body)
 
-  defp decision_count({operator, _meta, args}) when operator in [:and, :or] do
+  defp decision_count({operator, _meta, args}) when operator in [:and, :or, :&&, :||] do
     1 + decision_count(args)
   end
 
