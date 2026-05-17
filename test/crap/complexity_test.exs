@@ -148,6 +148,61 @@ defmodule Crap.ComplexityTest do
       assert {:ok, [%{complexity: 4}]} = Crap.Complexity.from_string(source)
     end
 
+    test "finds control flow keywords after keyword literals" do
+      source = """
+      defmodule Example do
+        def classify do
+          case [ok: true] do
+            [ok: true] -> :ok
+            _ -> :error
+          end
+
+          with [ok: true], false <- true do
+            :ok
+          else
+            _ -> :error
+          end
+        end
+      end
+      """
+
+      assert {:ok, [%{complexity: 5}]} = Crap.Complexity.from_string(source)
+    end
+
+    test "counts boolean decisions in arrow clause guards" do
+      source = """
+      defmodule Example do
+        def guarded(value, flag, other, fun) do
+          case value do
+            matched when flag and other -> matched
+          end
+
+          receive do
+            message when flag or other -> message
+          after
+            0 -> :timeout
+          end
+
+          with :ok <- value do
+            :ok
+          else
+            reason when flag and other -> reason
+          end
+
+          try do
+            fun.()
+          rescue
+            error in ArgumentError when flag and other -> error
+          catch
+            kind, reason when flag or other -> {kind, reason}
+          end
+        end
+      end
+      """
+
+      assert {:ok, [%{complexity: 14}]} = Crap.Complexity.from_string(source)
+    end
+
     test "handles multiple functions and aggregates same name and arity clauses" do
       source = """
       defmodule Example do

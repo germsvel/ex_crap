@@ -108,12 +108,15 @@ defmodule Crap.Complexity do
   end
 
   defp function_name_arity_and_guards({name, _meta, nil}) when is_atom(name), do: {name, 0, []}
-  defp function_name_arity_and_guards({name, _meta, args}) when is_atom(name), do: {name, length(args), []}
+
+  defp function_name_arity_and_guards({name, _meta, args}) when is_atom(name),
+    do: {name, length(args), []}
 
   defp decision_count(list) when is_list(list),
     do: Enum.reduce(list, 0, &(&2 + decision_count(&1)))
 
-  defp decision_count({:->, _meta, [_patterns, body]}), do: decision_count(body)
+  defp decision_count({:->, _meta, [patterns, body]}),
+    do: decision_count(patterns) + decision_count(body)
 
   defp decision_count({operator, _meta, args}) when operator in [:and, :or, :&&, :||] do
     1 + decision_count(args)
@@ -156,7 +159,7 @@ defmodule Crap.Complexity do
 
   defp keyword_value(args, key) do
     args
-    |> Enum.find(&Keyword.keyword?/1)
+    |> Enum.find(&(Keyword.keyword?(&1) and Keyword.has_key?(&1, key)))
     |> case do
       nil -> nil
       keyword -> Keyword.get(keyword, key)
