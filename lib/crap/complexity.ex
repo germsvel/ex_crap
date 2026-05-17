@@ -185,7 +185,7 @@ defmodule Crap.Complexity do
          implemented_definitions
        )
        when kind in @definition_kinds do
-    case definition_key(head) do
+    case definition_key(kind, head) do
       {:ok, key} -> not MapSet.member?(implemented_definitions, key)
       :error -> true
     end
@@ -198,7 +198,7 @@ defmodule Crap.Complexity do
          _implemented_definitions
        )
        when kind in @definition_kinds do
-    case definition_key(head) do
+    case definition_key(kind, head) do
       {:ok, _key} -> malformed_executable_container?(body, current_module, false, MapSet.new())
       :error -> true
     end
@@ -287,7 +287,7 @@ defmodule Crap.Complexity do
 
   defp definitions_with_bodies({kind, _meta, [head, [do: _body]]})
        when kind in @definition_kinds do
-    case definition_key(head) do
+    case definition_key(kind, head) do
       {:ok, key} -> [key]
       :error -> []
     end
@@ -310,13 +310,15 @@ defmodule Crap.Complexity do
 
   defp definitions_with_bodies(_quoted), do: []
 
-  defp definition_key({:when, _meta, [head | _guards]}), do: definition_key(head)
-  defp definition_key({name, _meta, nil}) when is_atom(name), do: {:ok, {name, 0}}
+  defp definition_key(kind, {:when, _meta, [head | _guards]}), do: definition_key(kind, head)
 
-  defp definition_key({name, _meta, args}) when is_atom(name) and is_list(args),
-    do: {:ok, {name, length(args)}}
+  defp definition_key(kind, {name, _meta, nil}) when is_atom(name),
+    do: {:ok, {kind, name, 0}}
 
-  defp definition_key(_head), do: :error
+  defp definition_key(kind, {name, _meta, args}) when is_atom(name) and is_list(args),
+    do: {:ok, {kind, name, length(args)}}
+
+  defp definition_key(_kind, _head), do: :error
 
   defp local_protocol_modules({:__block__, _meta, expressions}, current_module) do
     Enum.flat_map(expressions, &local_protocol_modules(&1, current_module))

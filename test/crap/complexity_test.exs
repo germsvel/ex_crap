@@ -686,6 +686,21 @@ defmodule Crap.ComplexityTest do
       end
     end
 
+    test "does not treat different definition kinds as implementations" do
+      for {head_kind, body_kind} <- [{"def", "defp"}, {"defp", "def"}, {"def", "defmacro"}] do
+        source = """
+        defmodule Bad do
+          #{head_kind} run(arg)
+          #{body_kind} run(arg) do
+            arg
+          end
+        end
+        """
+
+        assert {:error, :invalid_source} = Crap.Complexity.from_string(source)
+      end
+    end
+
     test "returns an error tuple for incomplete supported executable containers" do
       assert {:error, :invalid_source} = Crap.Complexity.from_string("defmodule Foo")
 
