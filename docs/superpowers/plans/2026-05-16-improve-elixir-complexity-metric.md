@@ -1,5 +1,7 @@
 # Improve Elixir Complexity Metric Implementation Plan
 
+> **STATUS: COMPLETE** — All tasks in this plan were implemented and merged as of 2026-05-17. The `try` snippet in Task 4 Step 2 is superseded by `docs/superpowers/plans/2026-05-17-fix-try-else-complexity-and-test-name.md`. Do not re-execute this plan.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make `Crap.Complexity` a more trustworthy Elixir cyclomatic complexity input for CRAP scoring by covering common Elixir decision forms, guards, multi-clause functions, and macros, while keeping the canonical CRAP formula unchanged.
