@@ -90,6 +90,31 @@ defmodule Crap.ScannerTest do
       assert file == Path.join(root, "lib/b_example.ex")
     end
 
+    test "analyzes files with default-argument function heads" do
+      root = tmp_dir("scanner-default-argument-head")
+
+      path = write_source(root, "lib/phoenix_test.ex", ~S"""
+      defmodule PhoenixTest do
+        def check(session, label, opts \\ [exact: true])
+
+        def check(session, label, opts) when is_binary(label) and is_list(opts) do
+          {session, label, opts}
+        end
+      end
+      """)
+
+      assert {:ok,
+              [
+                %{
+                  file: ^path,
+                  module: PhoenixTest,
+                  function: :check,
+                  arity: 3,
+                  complexity: 2
+                }
+              ]} = Crap.Scanner.analyze(root)
+    end
+
     test "returns a file-specific error for invalid source" do
       root = tmp_dir("scanner-invalid-source")
       path = write_source(root, "lib/bad.ex", "defmodule")
