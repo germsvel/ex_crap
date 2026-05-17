@@ -153,6 +153,7 @@ defmodule Crap.Complexity do
     branch_count(args) + receive_after_count(args) + decision_count(args)
   end
 
+  defp decision_count({:defmodule, _meta, _args}), do: 0
   defp decision_count({_name, _meta, args}) when is_list(args), do: decision_count(args)
   defp decision_count({_left, right}), do: decision_count(right)
   defp decision_count(_quoted), do: 0

@@ -324,6 +324,24 @@ defmodule Crap.ComplexityTest do
              }
     end
 
+    test "does not count nested defmodule body against enclosing function complexity" do
+      source = """
+      defmodule Outer do
+        def outer_fn do
+          defmodule Inner do
+            def inner_fn do
+              if true, do: :yes, else: :no
+            end
+          end
+        end
+      end
+      """
+
+      assert {:ok, results} = Crap.Complexity.from_string(source)
+      outer = Enum.find(results, &(&1.module == Outer and &1.function == :outer_fn))
+      assert outer.complexity == 1
+    end
+
     test "returns an error tuple for invalid Elixir source" do
       assert {:error, :invalid_source} = Crap.Complexity.from_string("defmodule")
     end
