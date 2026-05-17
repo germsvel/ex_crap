@@ -2,13 +2,13 @@ defmodule Crap do
   @moduledoc """
   Public API for calculating CRAP scores from complexity and coverage data.
 
-  The historical CRAP threshold of `30` is commonly used as a warning point, but
-  this library does not enforce thresholds yet.
+  Use `mix crap` for a project scan from exported Mix/Erlang coverdata. The task
+  enforces a maximum CRAP score threshold (default `30`) and fails with a non-zero
+  exit when any function exceeds it.
 
-  Use `mix crap` for a report-only project scan from exported Mix/Erlang
-  coverdata. Deferred work for later slices includes CI pass/fail behavior,
-  package publishing, global configuration, machine-readable output, rich
-  reporting, umbrella support, and broader path selection.
+  Deferred work for later slices includes package publishing, global configuration,
+  machine-readable output, rich reporting, umbrella support, and broader path
+  selection.
   """
 
   alias Crap.Complexity
