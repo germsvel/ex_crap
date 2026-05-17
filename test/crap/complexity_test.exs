@@ -451,6 +451,58 @@ defmodule Crap.ComplexityTest do
               ]} = Crap.Complexity.from_string(source)
     end
 
+    test "scopes local protocol aliases in nested explicit defimpl blocks" do
+      source = """
+      defmodule Outer do
+        defprotocol P do
+          def x(v)
+        end
+
+        defmodule S do
+          defstruct []
+        end
+
+        defimpl P, for: S do
+          def x(_), do: :ok
+        end
+      end
+      """
+
+      assert {:ok,
+              [
+                %{
+                  module: Outer.P.Outer.S,
+                  function: :x,
+                  arity: 1,
+                  complexity: 1
+                }
+              ]} = Crap.Complexity.from_string(source)
+    end
+
+    test "keeps multi-part protocol aliases absolute in nested explicit defimpl blocks" do
+      source = """
+      defmodule Outer do
+        defmodule S do
+          defstruct []
+        end
+
+        defimpl String.Chars, for: S do
+          def to_string(_), do: "ok"
+        end
+      end
+      """
+
+      assert {:ok,
+              [
+                %{
+                  module: String.Chars.Outer.S,
+                  function: :to_string,
+                  arity: 1,
+                  complexity: 1
+                }
+              ]} = Crap.Complexity.from_string(source)
+    end
+
     test "returns an error tuple for bodyless supported definitions inside modules" do
       for definition <- ["def", "defp", "defmacro", "defmacrop"] do
         source = """

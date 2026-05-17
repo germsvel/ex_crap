@@ -212,6 +212,13 @@ defmodule Crap.Complexity do
   defp module_name({:__aliases__, _meta, parts}, nil), do: Module.concat(parts)
   defp module_name({:__aliases__, _meta, parts}, parent), do: Module.concat([parent | parts])
 
+  defp protocol_module_name({:__aliases__, _meta, [_part]} = protocol_ast, current_module)
+       when not is_nil(current_module) do
+    module_name(protocol_ast, current_module)
+  end
+
+  defp protocol_module_name(protocol_ast, _current_module), do: module_name(protocol_ast, nil)
+
   defp defimpl_module_names(protocol_ast, for_ast, current_module) when is_list(for_ast) do
     Enum.map(for_ast, &defimpl_module_name(protocol_ast, &1, current_module))
   end
@@ -220,12 +227,15 @@ defmodule Crap.Complexity do
     [defimpl_module_name(protocol_ast, for_ast, current_module)]
   end
 
-  defp defimpl_module_name(protocol_ast, for_module, _current_module) when is_atom(for_module) do
-    Module.concat([module_name(protocol_ast, nil), for_module])
+  defp defimpl_module_name(protocol_ast, for_module, current_module) when is_atom(for_module) do
+    Module.concat([protocol_module_name(protocol_ast, current_module), for_module])
   end
 
   defp defimpl_module_name(protocol_ast, for_ast, current_module) do
-    Module.concat([module_name(protocol_ast, nil), module_name(for_ast, current_module)])
+    Module.concat([
+      protocol_module_name(protocol_ast, current_module),
+      module_name(for_ast, current_module)
+    ])
   end
 
   defp function_name_arity_and_guards({:when, _meta, [head | guards]}) do
