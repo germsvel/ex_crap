@@ -29,7 +29,21 @@ defmodule Crap.CoverageTest do
                {Example, :uncovered, 0} => 0.0,
                {Example, :partial, 0} => 25.0,
                {Example, :empty, 0} => 0.0
-             }
+              }
+    end
+
+    test "normalizes MACRO- prefixed function names to plain atom form" do
+      rows = [
+        {{Example, :"MACRO-debug", 2}, {10, 0}},
+        {{Example, :regular, 1}, {5, 5}}
+      ]
+
+      result = Crap.Coverage.from_function_rows(rows)
+
+      assert Map.has_key?(result, {Example, :debug, 1})
+      refute Map.has_key?(result, {Example, :"MACRO-debug", 2})
+      assert result[{Example, :debug, 1}] == 100.0
+      assert result[{Example, :regular, 1}] == 50.0
     end
   end
 

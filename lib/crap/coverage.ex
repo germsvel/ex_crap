@@ -27,8 +27,15 @@ defmodule Crap.Coverage do
     Map.new(rows, fn {{module, function, arity}, {covered, not_covered}} ->
       total = covered + not_covered
       percent = if total == 0, do: 0.0, else: covered / total * 100
-      {{module, function, arity}, percent}
+      {normalize_key(module, function, arity), percent}
     end)
+  end
+
+  defp normalize_key(module, function, arity) do
+    case Atom.to_string(function) do
+      "MACRO-" <> name -> {module, String.to_atom(name), arity - 1}
+      _other -> {module, function, arity}
+    end
   end
 
   defp ensure_cover_started do
