@@ -19,9 +19,9 @@ defmodule Mix.Tasks.Crap do
   a coverage report, but does not leave importable coverage data for a later
   `mix crap` run.
 
-  The task scans only root `lib/**/*.ex` files and skips valid files with no
-  analyzable function or macro bodies, such as callback-only protocols and
-  behaviour modules. The default maximum CRAP score is 30 (default: 30). Use
+  The task scans only root `lib/**/*.ex` files and skips valid files with no analyzable function or macro bodies,
+  such as callback-only protocols and behaviour modules.
+  The default maximum CRAP score is 30 (default: 30). Use
   `--max-score N` to override it. The task fails when any function exceeds the
   threshold or has score calculation errors. Missing function coverage is scored as 0%.
   Missing coverdata input is a usage error when analyzable functions exist.

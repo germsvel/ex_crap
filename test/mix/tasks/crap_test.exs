@@ -13,6 +13,7 @@ defmodule Mix.Tasks.CrapTest do
       assert Mix.Tasks.Crap.moduledoc() =~ "--max-score"
       assert Mix.Tasks.Crap.moduledoc() =~ "default: 30"
       assert Mix.Tasks.Crap.moduledoc() =~ "lib/**/*.ex"
+      assert Mix.Tasks.Crap.moduledoc() =~ "skips valid files with no analyzable function or macro bodies"
       assert Mix.Tasks.Crap.moduledoc() =~ ~r/Missing function\s+coverage is scored as 0%/
       assert Mix.Tasks.Crap.moduledoc() =~ "score calculation error"
       refute Mix.Tasks.Crap.moduledoc() =~ "report-only"
