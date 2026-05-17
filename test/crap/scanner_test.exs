@@ -48,6 +48,54 @@ defmodule Crap.ScannerTest do
 
       assert Crap.Scanner.analyze(root) == {:ok, []}
     end
+
+    test "returns an empty result when source files have no analyzable function bodies" do
+      root = tmp_dir("scanner-no-analyzable-functions")
+
+      write_source(root, "lib/driver.ex", """
+      defprotocol Example.Driver do
+        def visit(initial_struct, path)
+      end
+      """)
+
+      assert Crap.Scanner.analyze(root) == {:ok, []}
+    end
+
+    test "continues analyzing files after valid files with no analyzable function bodies" do
+      root = tmp_dir("scanner-mixed-analyzable-functions")
+
+      write_source(root, "lib/a_driver.ex", """
+      defprotocol Example.Driver do
+        def visit(initial_struct, path)
+      end
+      """)
+
+      write_source(root, "lib/b_example.ex", """
+      defmodule ScannerExample do
+        def ok, do: :ok
+      end
+      """)
+
+      assert {:ok,
+              [
+                %{
+                  file: file,
+                  module: ScannerExample,
+                  function: :ok,
+                  arity: 0,
+                  complexity: 1
+                }
+              ]} = Crap.Scanner.analyze(root)
+
+      assert file == Path.join(root, "lib/b_example.ex")
+    end
+
+    test "returns a file-specific error for invalid source" do
+      root = tmp_dir("scanner-invalid-source")
+      path = write_source(root, "lib/bad.ex", "defmodule")
+
+      assert Crap.Scanner.analyze(root) == {:error, {path, :invalid_source}}
+    end
   end
 
   defp tmp_dir(name) do
@@ -61,5 +109,6 @@ defmodule Crap.ScannerTest do
     path = Path.join(root, relative_path)
     File.mkdir_p!(Path.dirname(path))
     File.write!(path, source)
+    path
   end
 end
