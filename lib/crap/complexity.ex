@@ -13,6 +13,7 @@ defmodule Crap.Complexity do
   * Each `case` branch adds `1`.
   * Each `cond` clause adds `1`.
   * Boolean `and`, `or`, `&&`, and `||` operators add `1` each.
+  * Boolean operators in function guards add `1` each.
   * Multiple clauses for the same `{module, function, arity}` are aggregated by
     keeping the maximum clause complexity and earliest line number.
   """
@@ -58,7 +59,7 @@ defmodule Crap.Complexity do
   end
 
   defp functions({kind, meta, [head, [do: body]]}, module) when kind in [:def, :defp] do
-    {function, arity} = function_name_and_arity(head)
+    {function, arity, guards} = function_name_arity_and_guards(head)
 
     [
       %{
@@ -66,7 +67,7 @@ defmodule Crap.Complexity do
         function: function,
         arity: arity,
         line: meta[:line],
-        complexity: 1 + decision_count(body)
+        complexity: 1 + decision_count(guards) + decision_count(body)
       }
     ]
   end
@@ -95,11 +96,13 @@ defmodule Crap.Complexity do
   defp module_name({:__aliases__, _meta, parts}, nil), do: Module.concat(parts)
   defp module_name({:__aliases__, _meta, parts}, parent), do: Module.concat([parent | parts])
 
-  defp function_name_and_arity({:when, _meta, [head | _guards]}),
-    do: function_name_and_arity(head)
+  defp function_name_arity_and_guards({:when, _meta, [head | guards]}) do
+    {name, arity, existing_guards} = function_name_arity_and_guards(head)
+    {name, arity, existing_guards ++ guards}
+  end
 
-  defp function_name_and_arity({name, _meta, nil}) when is_atom(name), do: {name, 0}
-  defp function_name_and_arity({name, _meta, args}) when is_atom(name), do: {name, length(args)}
+  defp function_name_arity_and_guards({name, _meta, nil}) when is_atom(name), do: {name, 0, []}
+  defp function_name_arity_and_guards({name, _meta, args}) when is_atom(name), do: {name, length(args), []}
 
   defp decision_count(list) when is_list(list),
     do: Enum.reduce(list, 0, &(&2 + decision_count(&1)))

@@ -46,6 +46,18 @@ defmodule Crap.ComplexityTest do
       assert {:ok, [%{complexity: 3}]} = Crap.Complexity.from_string(source)
     end
 
+    test "counts guard boolean operators as decision points" do
+      source = """
+      defmodule Example do
+        def valid?(value) when is_binary(value) and byte_size(value) > 0 do
+          true
+        end
+      end
+      """
+
+      assert {:ok, [%{complexity: 2}]} = Crap.Complexity.from_string(source)
+    end
+
     test "counts each case branch and cond clause as a decision point" do
       source = """
       defmodule Example do
