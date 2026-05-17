@@ -111,13 +111,15 @@ defmodule Crap.Complexity do
     malformed_executable_container?(body)
   end
 
-  defp malformed_executable_container?({:defimpl, _meta, [_, opts, [do: body]]}) when is_list(opts) do
-    malformed_executable_container?(body)
+  defp malformed_executable_container?({:defmodule, _meta, _args}), do: true
+
+  defp malformed_executable_container?({:defimpl, _meta, [_, opts, [do: body]]})
+       when is_list(opts) do
+    not Keyword.has_key?(opts, :for) ||
+      malformed_executable_container?(body)
   end
 
-  defp malformed_executable_container?({kind, _meta, args}) when kind in [:defmodule, :defimpl] do
-    not is_list(args)
-  end
+  defp malformed_executable_container?({:defimpl, _meta, _args}), do: true
 
   defp malformed_executable_container?({:__block__, _meta, expressions}) do
     Enum.any?(expressions, &malformed_executable_container?/1)
