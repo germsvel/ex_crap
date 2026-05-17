@@ -93,4 +93,118 @@ defmodule CrapTest do
       assert Enum.find(results, &(&1.function == :fallback)).score == 20.0
     end
   end
+
+  describe "analyze_string/2 integration for new complexity rules" do
+    test "scores function with guard boolean operator" do
+      source = """
+      defmodule Example do
+        def valid?(value) when is_binary(value) and byte_size(value) > 0, do: true
+      end
+      """
+
+      assert {:ok, [%{function: :valid?, complexity: 2, status: :scored}]} =
+               Crap.analyze_string(source, %{})
+    end
+
+    test "scores aggregated multi-clause function" do
+      source = """
+      defmodule Example do
+        def classify(value) when is_integer(value) and value > 0, do: :positive
+        def classify(value) when is_integer(value) and value < 0, do: :negative
+        def classify(_value), do: :other
+      end
+      """
+
+      assert {:ok, [%{function: :classify, complexity: 5, status: :scored}]} =
+               Crap.analyze_string(source, %{})
+    end
+
+    test "scores function with with/else" do
+      source = """
+      defmodule Example do
+        def load(params) do
+          with {:ok, id} <- Map.fetch(params, :id),
+               {:ok, user} <- fetch_user(id) do
+            {:ok, user}
+          else
+            :error -> {:error, :missing_id}
+            {:error, reason} -> {:error, reason}
+          end
+        end
+      end
+      """
+
+      assert {:ok, [%{function: :load, complexity: 5, status: :scored}]} =
+               Crap.analyze_string(source, %{})
+    end
+
+    test "scores function with try/else and rescue" do
+      source = """
+      defmodule Example do
+        def parse(value) do
+          try do
+            decode(value)
+          else
+            {:ok, decoded} -> decoded
+            :error -> nil
+          rescue
+            ArgumentError -> :bad_argument
+          end
+        end
+      end
+      """
+
+      assert {:ok, [%{function: :parse, complexity: 5, status: :scored}]} =
+               Crap.analyze_string(source, %{})
+    end
+
+    test "scores function with comprehension generators and filters" do
+      source = """
+      defmodule Example do
+        def active_names(users) do
+          for user <- users, user.active?, user.confirmed?, do: user.name
+        end
+      end
+      """
+
+      assert {:ok, [%{function: :active_names, complexity: 4, status: :scored}]} =
+               Crap.analyze_string(source, %{})
+    end
+
+    test "scores function with receive and after" do
+      source = """
+      defmodule Example do
+        def wait do
+          receive do
+            {:ok, value} -> value
+            {:error, reason} -> {:error, reason}
+          after
+            100 -> :timeout
+          end
+        end
+      end
+      """
+
+      assert {:ok, [%{function: :wait, complexity: 4, status: :scored}]} =
+               Crap.analyze_string(source, %{})
+    end
+
+    test "scores defmacro and defmacrop definitions" do
+      source = """
+      defmodule Example do
+        defmacro debug(value) do
+          if value, do: value, else: nil
+        end
+
+        defmacrop trace(value) do
+          unless value, do: nil
+        end
+      end
+      """
+
+      assert {:ok, results} = Crap.analyze_string(source, %{})
+      assert Enum.find(results, &(&1.function == :debug)).complexity == 2
+      assert Enum.find(results, &(&1.function == :trace)).complexity == 2
+    end
+  end
 end
