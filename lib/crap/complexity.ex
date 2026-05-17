@@ -62,32 +62,37 @@ defmodule Crap.Complexity do
 
   def from_file(_path), do: {:error, :invalid_path}
 
-  defp functions(quoted, module), do: functions(quoted, module, MapSet.new())
-
-  defp functions({:defmodule, _meta, [module_ast, [do: body]]}, current_module, _local_protocols) do
-    module = module_name(module_ast, current_module)
-    functions(body, module, body |> local_protocol_modules(module) |> MapSet.new())
-  end
+  defp functions(quoted, module), do: functions(quoted, module, MapSet.new(), MapSet.new())
 
   defp functions(
-         {:defimpl, _meta, [protocol_ast, opts, [do: body]]},
+         {:defmodule, _meta, [module_ast, [do: body]]},
          current_module,
-         local_protocols
-       )
-       when is_list(opts) do
-    protocol_ast
-    |> defimpl_module_names(Keyword.fetch!(opts, :for), current_module, local_protocols)
-    |> Enum.flat_map(&functions(body, &1))
+         _local_protocols,
+         _local_modules
+       ) do
+    module = module_name(module_ast, current_module)
+
+    functions(
+      body,
+      module,
+      body |> local_protocol_modules(module) |> MapSet.new(),
+      body |> local_module_declarations(module) |> MapSet.new()
+    )
   end
 
-  defp functions({:defimpl, _meta, [protocol_ast, [do: body]]}, current_module, local_protocols)
-       when not is_nil(current_module) do
-    protocol_ast
-    |> defimpl_module_names(current_module, current_module, local_protocols)
-    |> Enum.flat_map(&functions(body, &1))
+  defp functions({:defimpl, _meta, args}, current_module, local_protocols, local_modules) do
+    case defimpl_parts(args, current_module) do
+      {:ok, protocol_ast, for_ast, body} ->
+        protocol_ast
+        |> defimpl_module_names(for_ast, current_module, local_protocols, local_modules)
+        |> Enum.flat_map(&functions(body, &1))
+
+      :error ->
+        []
+    end
   end
 
-  defp functions({kind, meta, [head, [do: body]]}, module, _local_protocols)
+  defp functions({kind, meta, [head, [do: body]]}, module, _local_protocols, _local_modules)
        when kind in @definition_kinds do
     {function, arity, guards} = function_name_arity_and_guards(head)
 
@@ -102,25 +107,29 @@ defmodule Crap.Complexity do
     ]
   end
 
-  defp functions({:__block__, _meta, expressions}, module, local_protocols) do
-    Enum.flat_map(expressions, &functions(&1, module, local_protocols))
+  defp functions({:__block__, _meta, expressions}, module, local_protocols, local_modules) do
+    Enum.flat_map(expressions, &functions(&1, module, local_protocols, local_modules))
   end
 
-  defp functions(list, module, local_protocols) when is_list(list) do
-    Enum.flat_map(list, &functions(&1, module, local_protocols))
+  defp functions(list, module, local_protocols, local_modules) when is_list(list) do
+    Enum.flat_map(list, &functions(&1, module, local_protocols, local_modules))
   end
 
-  defp functions({branch, _meta, args}, module, local_protocols) when branch in [:if, :unless] do
+  defp functions({branch, _meta, args}, module, local_protocols, local_modules)
+       when branch in [:if, :unless] do
     case List.last(args) do
       branches when is_list(branches) ->
-        Enum.flat_map(Keyword.values(branches), &functions(&1, module, local_protocols))
+        Enum.flat_map(
+          Keyword.values(branches),
+          &functions(&1, module, local_protocols, local_modules)
+        )
 
       _other ->
         []
     end
   end
 
-  defp functions(_quoted, _module, _local_protocols), do: []
+  defp functions(_quoted, _module, _local_protocols, _local_modules), do: []
 
   defp malformed_executable_container?(quoted),
     do: malformed_executable_container?(quoted, nil, false)
@@ -142,32 +151,19 @@ defmodule Crap.Complexity do
        do: true
 
   defp malformed_executable_container?(
-         {:defimpl, _meta, [protocol_ast, opts, [do: body]]},
+         {:defimpl, _meta, args},
          current_module,
          _in_executable?
-       )
-       when is_list(opts) do
-    for_ast = Keyword.get(opts, :for)
+       ) do
+    case defimpl_parts(args, current_module) do
+      {:ok, protocol_ast, for_ast, body} ->
+        not defimpl_name_ast?(protocol_ast, for_ast) ||
+          malformed_executable_container?(body, current_module, true)
 
-    not Keyword.has_key?(opts, :for) || not defimpl_name_ast?(protocol_ast, for_ast) ||
-      malformed_executable_container?(body, current_module, true)
+      :error ->
+        true
+    end
   end
-
-  defp malformed_executable_container?(
-         {:defimpl, _meta, [protocol_ast, [do: body]]},
-         current_module,
-         _in_executable?
-       )
-       when not is_nil(current_module) do
-    not module_alias?(protocol_ast) || malformed_executable_container?(body, current_module, true)
-  end
-
-  defp malformed_executable_container?(
-         {:defimpl, _meta, _args},
-         _current_module,
-         _in_executable?
-       ),
-       do: true
 
   defp malformed_executable_container?({kind, _meta, [_head]}, _current_module, true)
        when kind in @definition_kinds do
@@ -220,6 +216,39 @@ defmodule Crap.Complexity do
 
   defp local_protocol_modules(_quoted, _current_module), do: []
 
+  defp local_module_declarations({:__block__, _meta, expressions}, current_module) do
+    Enum.flat_map(expressions, &local_module_declarations(&1, current_module))
+  end
+
+  defp local_module_declarations({:defmodule, _meta, [module_ast, [do: _body]]}, current_module)
+       when not is_nil(current_module) do
+    if module_alias?(module_ast), do: [module_name(module_ast, current_module)], else: []
+  end
+
+  defp local_module_declarations(_quoted, _current_module), do: []
+
+  defp defimpl_parts([protocol_ast, opts, [do: body]], _current_module)
+       when is_list(opts) do
+    {:ok, protocol_ast, Keyword.get(opts, :for), body}
+  end
+
+  defp defimpl_parts([protocol_ast, [do: body]], current_module)
+       when not is_nil(current_module) do
+    {:ok, protocol_ast, current_module, body}
+  end
+
+  defp defimpl_parts([protocol_ast, opts], _current_module)
+       when is_list(opts) do
+    with {:ok, for_ast} <- Keyword.fetch(opts, :for),
+         {:ok, body} <- Keyword.fetch(opts, :do) do
+      {:ok, protocol_ast, for_ast, body}
+    else
+      :error -> :error
+    end
+  end
+
+  defp defimpl_parts(_args, _current_module), do: :error
+
   defp defimpl_name_ast?(protocol_ast, for_ast) when is_list(for_ast) do
     module_alias?(protocol_ast) and Enum.all?(for_ast, &defimpl_target_ast?/1)
   end
@@ -260,16 +289,25 @@ defmodule Crap.Complexity do
   defp protocol_module_name(protocol_ast, _current_module, _local_protocols),
     do: module_name(protocol_ast, nil)
 
-  defp defimpl_module_names(protocol_ast, for_ast, current_module, local_protocols)
+  defp defimpl_module_names(protocol_ast, for_ast, current_module, local_protocols, local_modules)
        when is_list(for_ast) do
-    Enum.map(for_ast, &defimpl_module_name(protocol_ast, &1, current_module, local_protocols))
+    Enum.map(
+      for_ast,
+      &defimpl_module_name(protocol_ast, &1, current_module, local_protocols, local_modules)
+    )
   end
 
-  defp defimpl_module_names(protocol_ast, for_ast, current_module, local_protocols) do
-    [defimpl_module_name(protocol_ast, for_ast, current_module, local_protocols)]
+  defp defimpl_module_names(protocol_ast, for_ast, current_module, local_protocols, local_modules) do
+    [defimpl_module_name(protocol_ast, for_ast, current_module, local_protocols, local_modules)]
   end
 
-  defp defimpl_module_name(protocol_ast, for_module, current_module, local_protocols)
+  defp defimpl_module_name(
+         protocol_ast,
+         for_module,
+         current_module,
+         local_protocols,
+         _local_modules
+       )
        when is_atom(for_module) do
     Module.concat([
       protocol_module_name(protocol_ast, current_module, local_protocols),
@@ -277,11 +315,23 @@ defmodule Crap.Complexity do
     ])
   end
 
-  defp defimpl_module_name(protocol_ast, for_ast, current_module, local_protocols) do
+  defp defimpl_module_name(protocol_ast, for_ast, current_module, local_protocols, local_modules) do
     Module.concat([
       protocol_module_name(protocol_ast, current_module, local_protocols),
-      module_name(for_ast, current_module)
+      target_module_name(for_ast, current_module, local_modules)
     ])
+  end
+
+  defp target_module_name(for_ast, nil, _local_modules), do: module_name(for_ast, nil)
+
+  defp target_module_name(for_ast, current_module, local_modules) do
+    local_module = module_name(for_ast, current_module)
+
+    if MapSet.member?(local_modules, local_module) do
+      local_module
+    else
+      module_name(for_ast, nil)
+    end
   end
 
   defp function_name_arity_and_guards({:when, _meta, [head | guards]}) do

@@ -416,6 +416,22 @@ defmodule Crap.ComplexityTest do
               ]} = Crap.Complexity.from_string(source)
     end
 
+    test "analyzes keyword-form defimpl blocks" do
+      source = ~S"""
+      defimpl String.Chars, for: Example, do: def(to_string(_), do: "ok")
+      """
+
+      assert {:ok,
+              [
+                %{
+                  module: String.Chars.Example,
+                  function: :to_string,
+                  arity: 1,
+                  complexity: 1
+                }
+              ]} = Crap.Complexity.from_string(source)
+    end
+
     test "analyzes defimpl blocks for multiple target modules" do
       source = """
       defimpl String.Chars, for: [Example.One, Example.Two] do
@@ -524,6 +540,26 @@ defmodule Crap.ComplexityTest do
               [
                 %{
                   module: String.Chars.Outer.S,
+                  function: :to_string,
+                  arity: 1,
+                  complexity: 1
+                }
+              ]} = Crap.Complexity.from_string(source)
+    end
+
+    test "keeps undeclared multi-part target aliases absolute in nested explicit defimpl blocks" do
+      source = """
+      defmodule Outer do
+        defimpl String.Chars, for: Example.One do
+          def to_string(_), do: "ok"
+        end
+      end
+      """
+
+      assert {:ok,
+              [
+                %{
+                  module: String.Chars.Example.One,
                   function: :to_string,
                   arity: 1,
                   complexity: 1
