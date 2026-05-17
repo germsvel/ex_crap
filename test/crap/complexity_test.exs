@@ -366,6 +366,56 @@ defmodule Crap.ComplexityTest do
       assert outer.complexity == 1
     end
 
+    test "returns an empty result for a protocol with callback declarations" do
+      source = """
+      defprotocol Example.Protocol do
+        def call(value)
+        def render(session, opts)
+      end
+      """
+
+      assert Crap.Complexity.from_string(source) == {:ok, []}
+    end
+
+    test "returns an empty result for a callback-only module" do
+      source = """
+      defmodule Example.Behaviour do
+        @callback call(term()) :: term()
+      end
+      """
+
+      assert Crap.Complexity.from_string(source) == {:ok, []}
+    end
+
+    test "returns an empty result for an empty valid module" do
+      source = """
+      defmodule Example.Empty do
+      end
+      """
+
+      assert Crap.Complexity.from_string(source) == {:ok, []}
+    end
+
+    test "analyzes functions inside defimpl blocks" do
+      source = """
+      defimpl String.Chars, for: Example do
+        def to_string(value) do
+          if value, do: "yes", else: "no"
+        end
+      end
+      """
+
+      assert {:ok,
+              [
+                %{
+                  module: String.Chars.Example,
+                  function: :to_string,
+                  arity: 1,
+                  complexity: 2
+                }
+              ]} = Crap.Complexity.from_string(source)
+    end
+
     test "returns an error tuple for invalid Elixir source" do
       assert {:error, :invalid_source} = Crap.Complexity.from_string("defmodule")
     end

@@ -1,6 +1,7 @@
 defmodule Crap.Complexity do
   @moduledoc """
-  Parses Elixir source and returns sprint-local cyclomatic complexity results.
+  Parses Elixir source and returns sprint-local cyclomatic complexity results for
+  supported executable containers, including modules and protocol implementations.
 
   Source is parsed with `Code.string_to_quoted/1`; analyzed code is not compiled or
   evaluated. Each result includes `module`, `function`, `arity`, `line`, and
@@ -27,14 +28,16 @@ defmodule Crap.Complexity do
   @doc """
   Returns per-function complexity results for an Elixir source string.
 
-  Invalid or unsupported source returns `{:error, :invalid_source}`.
+  Invalid source returns `{:error, :invalid_source}`. Valid source with no
+  analyzable function or macro bodies returns `{:ok, []}`.
   """
   def from_string(source) when is_binary(source) do
     case Code.string_to_quoted(source) do
       {:ok, quoted} ->
-        case functions(quoted, nil) do
-          [] -> {:error, :invalid_source}
-          functions -> {:ok, aggregate_clauses(functions)}
+        if malformed_executable_container?(quoted) do
+          {:error, :invalid_source}
+        else
+          {:ok, quoted |> functions(nil) |> aggregate_clauses()}
         end
 
       {:error, _reason} ->
@@ -61,6 +64,12 @@ defmodule Crap.Complexity do
 
   defp functions({:defmodule, _meta, [module_ast, [do: body]]}, current_module) do
     module = module_name(module_ast, current_module)
+    functions(body, module)
+  end
+
+  defp functions({:defimpl, _meta, [protocol_ast, opts, [do: body]]}, current_module)
+       when is_list(opts) do
+    module = defimpl_module_name(protocol_ast, Keyword.fetch!(opts, :for), current_module)
     functions(body, module)
   end
 
@@ -98,6 +107,28 @@ defmodule Crap.Complexity do
 
   defp functions(_quoted, _module), do: []
 
+  defp malformed_executable_container?({:defmodule, _meta, [_, [do: body]]}) do
+    malformed_executable_container?(body)
+  end
+
+  defp malformed_executable_container?({:defimpl, _meta, [_, opts, [do: body]]}) when is_list(opts) do
+    malformed_executable_container?(body)
+  end
+
+  defp malformed_executable_container?({kind, _meta, args}) when kind in [:defmodule, :defimpl] do
+    not is_list(args)
+  end
+
+  defp malformed_executable_container?({:__block__, _meta, expressions}) do
+    Enum.any?(expressions, &malformed_executable_container?/1)
+  end
+
+  defp malformed_executable_container?(list) when is_list(list) do
+    Enum.any?(list, &malformed_executable_container?/1)
+  end
+
+  defp malformed_executable_container?(_quoted), do: false
+
   defp aggregate_clauses(functions) do
     functions
     |> Enum.group_by(&{&1.module, &1.function, &1.arity})
@@ -113,6 +144,10 @@ defmodule Crap.Complexity do
 
   defp module_name({:__aliases__, _meta, parts}, nil), do: Module.concat(parts)
   defp module_name({:__aliases__, _meta, parts}, parent), do: Module.concat([parent | parts])
+
+  defp defimpl_module_name(protocol_ast, for_ast, current_module) do
+    Module.concat([module_name(protocol_ast, current_module), module_name(for_ast, current_module)])
+  end
 
   defp function_name_arity_and_guards({:when, _meta, [head | guards]}) do
     {name, arity, existing_guards} = function_name_arity_and_guards(head)
