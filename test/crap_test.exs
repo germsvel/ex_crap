@@ -102,7 +102,18 @@ defmodule CrapTest do
       end
       """
 
-      assert {:ok, [%{function: :valid?, complexity: 2, status: :scored}]} =
+      assert {:ok,
+              [
+                %{
+                  module: Example,
+                  function: :valid?,
+                  arity: 1,
+                  complexity: 2,
+                  coverage_percent: 0,
+                  score: 6.0,
+                  status: :scored
+                }
+              ]} =
                Crap.analyze_string(source, %{})
     end
 
@@ -115,7 +126,18 @@ defmodule CrapTest do
       end
       """
 
-      assert {:ok, [%{function: :classify, complexity: 5, status: :scored}]} =
+      assert {:ok,
+              [
+                %{
+                  module: Example,
+                  function: :classify,
+                  arity: 1,
+                  complexity: 5,
+                  coverage_percent: 0,
+                  score: 30.0,
+                  status: :scored
+                }
+              ]} =
                Crap.analyze_string(source, %{})
     end
 
@@ -134,7 +156,18 @@ defmodule CrapTest do
       end
       """
 
-      assert {:ok, [%{function: :load, complexity: 5, status: :scored}]} =
+      assert {:ok,
+              [
+                %{
+                  module: Example,
+                  function: :load,
+                  arity: 1,
+                  complexity: 5,
+                  coverage_percent: 0,
+                  score: 30.0,
+                  status: :scored
+                }
+              ]} =
                Crap.analyze_string(source, %{})
     end
 
@@ -154,7 +187,18 @@ defmodule CrapTest do
       end
       """
 
-      assert {:ok, [%{function: :parse, complexity: 5, status: :scored}]} =
+      assert {:ok,
+              [
+                %{
+                  module: Example,
+                  function: :parse,
+                  arity: 1,
+                  complexity: 5,
+                  coverage_percent: 0,
+                  score: 30.0,
+                  status: :scored
+                }
+              ]} =
                Crap.analyze_string(source, %{})
     end
 
@@ -167,7 +211,18 @@ defmodule CrapTest do
       end
       """
 
-      assert {:ok, [%{function: :active_names, complexity: 4, status: :scored}]} =
+      assert {:ok,
+              [
+                %{
+                  module: Example,
+                  function: :active_names,
+                  arity: 1,
+                  complexity: 4,
+                  coverage_percent: 0,
+                  score: 20.0,
+                  status: :scored
+                }
+              ]} =
                Crap.analyze_string(source, %{})
     end
 
@@ -185,7 +240,18 @@ defmodule CrapTest do
       end
       """
 
-      assert {:ok, [%{function: :wait, complexity: 4, status: :scored}]} =
+      assert {:ok,
+              [
+                %{
+                  module: Example,
+                  function: :wait,
+                  arity: 0,
+                  complexity: 4,
+                  coverage_percent: 0,
+                  score: 20.0,
+                  status: :scored
+                }
+              ]} =
                Crap.analyze_string(source, %{})
     end
 
@@ -202,9 +268,27 @@ defmodule CrapTest do
       end
       """
 
-      assert {:ok, results} = Crap.analyze_string(source, %{})
-      assert Enum.find(results, &(&1.function == :debug)).complexity == 2
-      assert Enum.find(results, &(&1.function == :trace)).complexity == 2
+      assert {:ok,
+              [
+                %{
+                  module: Example,
+                  function: :debug,
+                  arity: 1,
+                  complexity: 2,
+                  coverage_percent: 0,
+                  score: 6.0,
+                  status: :scored
+                },
+                %{
+                  module: Example,
+                  function: :trace,
+                  arity: 1,
+                  complexity: 2,
+                  coverage_percent: 0,
+                  score: 6.0,
+                  status: :scored
+                }
+              ]} = Crap.analyze_string(source, %{})
     end
   end
 end
