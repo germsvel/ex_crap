@@ -407,7 +407,7 @@ defmodule Crap.ComplexityTest do
                arity: 1,
                line: 28,
                complexity: 4
-              }
+             }
     end
 
     test "parses new AST shapes in the realistic fixture" do

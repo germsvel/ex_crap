@@ -29,7 +29,7 @@ defmodule Crap.CoverageTest do
                {Example, :uncovered, 0} => 0.0,
                {Example, :partial, 0} => 25.0,
                {Example, :empty, 0} => 0.0
-              }
+             }
     end
 
     test "normalizes MACRO- prefixed function names to plain atom form" do
