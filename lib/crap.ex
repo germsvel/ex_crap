@@ -4,11 +4,10 @@ defmodule Crap do
 
   Use `mix crap` for a project scan from exported Mix/Erlang coverdata. The task
   enforces a maximum CRAP score threshold (default `30`) and fails with a non-zero
-  exit when any function exceeds it.
+  exit when any function exceeds it or any score calculation error occurs.
 
-  Deferred work for later slices includes package publishing, global configuration,
-  machine-readable output, rich reporting, umbrella support, and broader path
-  selection.
+  Deferred work for later slices includes machine-readable formats, broader path
+  selection, umbrella support, third-party coverage formats, and richer reporting.
   """
 
   alias Crap.Complexity
