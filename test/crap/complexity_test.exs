@@ -415,25 +415,17 @@ defmodule Crap.ComplexityTest do
 
       assert {:ok, results} = Crap.Complexity.from_file(path)
 
-      fetch = Enum.find(results, &(&1.function == :fetch))
-      assert fetch.module == Realistic.Sample
-      assert fetch.arity == 2
-      assert fetch.complexity == 5
+      assert %{module: Realistic.Sample, function: :fetch, arity: 2, complexity: 5} =
+               Enum.find(results, &(&1.function == :fetch))
 
-      process = Enum.find(results, &(&1.function == :process))
-      assert process.module == Realistic.Sample
-      assert process.arity == 1
-      assert process.complexity == 4
+      assert %{module: Realistic.Sample, function: :process, arity: 1, complexity: 4} =
+               Enum.find(results, &(&1.function == :process))
 
-      load = Enum.find(results, &(&1.function == :load))
-      assert load.module == Realistic.Sample
-      assert load.arity == 2
-      assert load.complexity == 5
+      assert %{module: Realistic.Sample, function: :load, arity: 2, complexity: 5} =
+               Enum.find(results, &(&1.function == :load))
 
-      assert_valid = Enum.find(results, &(&1.function == :assert_valid))
-      assert assert_valid.module == Realistic.Sample
-      assert assert_valid.arity == 1
-      assert assert_valid.complexity == 2
+      assert %{module: Realistic.Sample, function: :assert_valid, arity: 1, complexity: 2} =
+               Enum.find(results, &(&1.function == :assert_valid))
     end
 
     test "returns an error tuple for an unreadable file" do
