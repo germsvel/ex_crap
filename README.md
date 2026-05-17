@@ -1,6 +1,6 @@
 # CRAP
 
-CRAP is an Elixir library and Mix task for calculating Change Risk Anti-Patterns scores from cyclomatic complexity and test coverage.
+CRAP is an Elixir library and Mix task for calculating Change Risk Anti-Patterns scores from cyclomatic complexity and test coverage. It is a prioritization signal for uncovered complexity, not a complete code-quality or maintainability measure.
 
 ## Library API
 
@@ -50,9 +50,15 @@ mix crap --coverdata path/to/file.coverdata
 
 The task scans only root project files matching `lib/**/*.ex`. It does not scan `test/`, `config/`, `priv/`, dependencies, generated files, umbrella child apps, or arbitrary caller-provided paths.
 
-The report includes file, module, function/arity, complexity, coverage, CRAP score, and status. File paths are displayed relative to the project root. Functions with no coverage data remain visible with a `missing coverage` status and cause the task to fail because CI cannot verify their risk.
+The report includes file, module, function/arity, complexity, coverage, CRAP score, and status. File paths are displayed relative to the project root. Functions with no matching coverage entry are scored pessimistically as `0%` covered.
 
-The task fails with a non-zero exit status when any scored function is above the configured threshold, any function is missing coverage, or any score calculation error occurs.
+The task fails with a non-zero exit status when any scored function is above the configured threshold or any score calculation error occurs. Missing coverdata input remains a usage error because no CRAP scores can be calculated without an importable coverage file.
+
+## Metric Interpretation
+
+CRAP combines function-level cyclomatic complexity with function-level coverage to highlight code that is risky to change because it is both complex and under-tested. The default threshold of `30` follows the historical CRAP convention.
+
+Cyclomatic complexity is only a proxy for path and test burden. It does not measure naming, cohesion, coupling, domain complexity, readability, code smells, or whether tests contain meaningful assertions. Treat high CRAP scores as a queue for investigation: add meaningful tests, simplify the function, or test before refactoring risky legacy code.
 
 ## Deferred Work
 
