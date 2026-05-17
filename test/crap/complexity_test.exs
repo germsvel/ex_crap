@@ -98,7 +98,7 @@ defmodule Crap.ComplexityTest do
       assert {:ok, [%{complexity: 5}]} = Crap.Complexity.from_string(source)
     end
 
-    test "counts try rescue catch and after as decision points" do
+    test "counts try rescue and catch as decision points" do
       source = """
       defmodule Example do
         def safe(fun) do
