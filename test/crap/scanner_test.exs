@@ -93,15 +93,16 @@ defmodule Crap.ScannerTest do
     test "analyzes files with default-argument function heads" do
       root = tmp_dir("scanner-default-argument-head")
 
-      path = write_source(root, "lib/phoenix_test.ex", ~S"""
-      defmodule PhoenixTest do
-        def check(session, label, opts \\ [exact: true])
+      path =
+        write_source(root, "lib/phoenix_test.ex", ~S"""
+        defmodule PhoenixTest do
+          def check(session, label, opts \\ [exact: true])
 
-        def check(session, label, opts) when is_binary(label) and is_list(opts) do
-          {session, label, opts}
+          def check(session, label, opts) when is_binary(label) and is_list(opts) do
+            {session, label, opts}
+          end
         end
-      end
-      """)
+        """)
 
       assert {:ok,
               [
