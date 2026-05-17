@@ -169,6 +169,32 @@ defmodule Crap.ComplexityTest do
       assert {:ok, [%{complexity: 5}]} = Crap.Complexity.from_string(source)
     end
 
+    test "prefers control flow keyword blocks over matching keyword literals" do
+      source = """
+      defmodule Example do
+        def case_literal do
+          case [do: :literal] do
+            [do: :literal] -> :ok
+            _ -> :error
+          end
+        end
+
+        def with_literal do
+          with [else: :literal], :ok <- :ok do
+            :ok
+          else
+            _ -> :error
+          end
+        end
+      end
+      """
+
+      assert {:ok, results} = Crap.Complexity.from_string(source)
+
+      assert Enum.find(results, &(&1.function == :case_literal)).complexity == 3
+      assert Enum.find(results, &(&1.function == :with_literal)).complexity == 3
+    end
+
     test "counts boolean decisions in arrow clause guards" do
       source = """
       defmodule Example do

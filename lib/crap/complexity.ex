@@ -159,6 +159,7 @@ defmodule Crap.Complexity do
 
   defp keyword_value(args, key) do
     args
+    |> Enum.reverse()
     |> Enum.find(&(Keyword.keyword?(&1) and Keyword.has_key?(&1, key)))
     |> case do
       nil -> nil
