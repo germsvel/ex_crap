@@ -479,6 +479,34 @@ defmodule Crap.ComplexityTest do
               ]} = Crap.Complexity.from_string(source)
     end
 
+    test "scopes local multi-part protocol aliases in nested explicit defimpl blocks" do
+      source = """
+      defmodule Outer do
+        defprotocol P.Q do
+          def x(v)
+        end
+
+        defmodule S do
+          defstruct []
+        end
+
+        defimpl P.Q, for: S do
+          def x(_), do: :ok
+        end
+      end
+      """
+
+      assert {:ok,
+              [
+                %{
+                  module: Outer.P.Q.Outer.S,
+                  function: :x,
+                  arity: 1,
+                  complexity: 1
+                }
+              ]} = Crap.Complexity.from_string(source)
+    end
+
     test "keeps multi-part protocol aliases absolute in nested explicit defimpl blocks" do
       source = """
       defmodule Outer do
