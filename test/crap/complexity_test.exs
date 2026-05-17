@@ -80,6 +80,74 @@ defmodule Crap.ComplexityTest do
       assert {:ok, [%{complexity: 7}]} = Crap.Complexity.from_string(source)
     end
 
+    test "counts with else clauses as decision points" do
+      source = """
+      defmodule Example do
+        def load(params) do
+          with {:ok, id} <- Map.fetch(params, :id),
+               {:ok, user} <- fetch_user(id) do
+            {:ok, user}
+          else
+            :error -> {:error, :missing_id}
+            {:error, reason} -> {:error, reason}
+          end
+        end
+      end
+      """
+
+      assert {:ok, [%{complexity: 5}]} = Crap.Complexity.from_string(source)
+    end
+
+    test "counts try rescue catch and after as decision points" do
+      source = """
+      defmodule Example do
+        def safe(fun) do
+          try do
+            fun.()
+          rescue
+            ArgumentError -> :bad_argument
+            RuntimeError -> :runtime
+          catch
+            :exit, _reason -> :exit
+          after
+            :ok
+          end
+        end
+      end
+      """
+
+      assert {:ok, [%{complexity: 5}]} = Crap.Complexity.from_string(source)
+    end
+
+    test "counts comprehension generators and filters as decision points" do
+      source = """
+      defmodule Example do
+        def active_names(users) do
+          for user <- users, user.active?, user.confirmed?, do: user.name
+        end
+      end
+      """
+
+      assert {:ok, [%{complexity: 4}]} = Crap.Complexity.from_string(source)
+    end
+
+    test "counts receive clauses and after timeout as decision points" do
+      source = """
+      defmodule Example do
+        def wait do
+          receive do
+            {:ok, value} -> value
+            {:error, reason} -> {:error, reason}
+          after
+            100 -> :timeout
+          end
+        end
+      end
+      """
+
+      assert {:ok, [%{complexity: 4}]} = Crap.Complexity.from_string(source)
+    end
+
     test "handles multiple functions and aggregates same name and arity clauses" do
       source = """
       defmodule Example do

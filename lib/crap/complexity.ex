@@ -12,6 +12,10 @@ defmodule Crap.Complexity do
   * Each `if` and `unless` adds `1`.
   * Each `case` branch adds `1`.
   * Each `cond` clause adds `1`.
+  * Each `with` generator and `else` branch adds `1`.
+  * `try` adds `1`; each `rescue` and `catch` clause adds `1`.
+  * Each `for` generator and filter adds `1`.
+  * Each `receive` branch adds `1`; an `after` timeout branch adds `1`.
   * Boolean `and`, `or`, `&&`, and `||` operators add `1` each.
   * Boolean operators in function guards add `1` each.
   * Multiple clauses for the same `{module, function, arity}` are aggregated by
@@ -123,22 +127,58 @@ defmodule Crap.Complexity do
     branch_count(args) + decision_count(args)
   end
 
+  defp decision_count({:with, _meta, args}) do
+    generator_count(args) + arrow_count(keyword_value(args, :else)) + decision_count(args)
+  end
+
+  defp decision_count({:<-, _meta, args}) do
+    decision_count(args)
+  end
+
+  defp decision_count({:try, _meta, args}) do
+    1 + arrow_count(keyword_value(args, :rescue)) + arrow_count(keyword_value(args, :catch)) +
+      decision_count(args)
+  end
+
+  defp decision_count({:for, _meta, args}) do
+    comprehension_qualifier_count(args) + decision_count(args)
+  end
+
+  defp decision_count({:receive, _meta, args}) do
+    branch_count(args) + receive_after_count(args) + decision_count(args)
+  end
+
   defp decision_count({_name, _meta, args}) when is_list(args), do: decision_count(args)
   defp decision_count({_left, right}), do: decision_count(right)
   defp decision_count(_quoted), do: 0
 
-  defp branch_count(args) do
+  defp branch_count(args), do: args |> keyword_value(:do) |> arrow_count()
+
+  defp keyword_value(args, key) do
     args
     |> Enum.find(&Keyword.keyword?/1)
     |> case do
       nil -> nil
-      keyword -> Keyword.get(keyword, :do)
-    end
-    |> case do
-      clauses when is_list(clauses) -> Enum.count(clauses, &match?({:->, _meta, _clause}, &1))
-      {:__block__, _meta, clauses} -> Enum.count(clauses, &match?({:->, _meta, _clause}, &1))
-      {:->, _meta, _clause} -> 1
-      _other -> 0
+      keyword -> Keyword.get(keyword, key)
     end
   end
+
+  defp arrow_count(clauses) when is_list(clauses),
+    do: Enum.count(clauses, &match?({:->, _meta, _clause}, &1))
+
+  defp arrow_count({:__block__, _meta, clauses}), do: arrow_count(clauses)
+  defp arrow_count({:->, _meta, _clause}), do: 1
+  defp arrow_count(_other), do: 0
+
+  defp generator_count(args), do: Enum.count(args, &match?({:<-, _meta, _args}, &1))
+
+  defp comprehension_qualifier_count(args) do
+    Enum.count(args, fn
+      {:<-, _meta, _args} -> true
+      keyword when is_list(keyword) -> false
+      _filter -> true
+    end)
+  end
+
+  defp receive_after_count(args), do: if(keyword_value(args, :after), do: 1, else: 0)
 end
