@@ -273,6 +273,38 @@ defmodule Crap.ComplexityTest do
                Crap.Complexity.from_string(source)
     end
 
+    test "discovers defmacro and defmacrop definitions" do
+      source = """
+      defmodule Example do
+        defmacro public_macro(value) do
+          if value, do: value, else: nil
+        end
+
+        defmacrop private_macro(value) do
+          unless value, do: nil
+        end
+      end
+      """
+
+      assert {:ok, results} = Crap.Complexity.from_string(source)
+
+      assert Enum.find(results, &(&1.function == :public_macro)) == %{
+               module: Example,
+               function: :public_macro,
+               arity: 1,
+               line: 2,
+               complexity: 2
+             }
+
+      assert Enum.find(results, &(&1.function == :private_macro)) == %{
+               module: Example,
+               function: :private_macro,
+               arity: 1,
+               line: 6,
+               complexity: 2
+             }
+    end
+
     test "returns an error tuple for invalid Elixir source" do
       assert {:error, :invalid_source} = Crap.Complexity.from_string("defmodule")
     end

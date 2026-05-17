@@ -8,7 +8,7 @@ defmodule Crap.Complexity do
 
   Current decision-point rules:
 
-  * Each discovered `def` or `defp` starts with base complexity `1`.
+  * Each discovered `def`, `defp`, `defmacro`, or `defmacrop` starts with base complexity `1`.
   * Each `if` and `unless` adds `1`.
   * Each `case` branch adds `1`.
   * Each `cond` clause adds `1`.
@@ -21,6 +21,8 @@ defmodule Crap.Complexity do
   * Multiple clauses for the same `{module, function, arity}` are aggregated by
     summing one path per clause plus each clause's guard/body decisions.
   """
+
+  @definition_kinds [:def, :defp, :defmacro, :defmacrop]
 
   @doc """
   Returns per-function complexity results for an Elixir source string.
@@ -62,7 +64,7 @@ defmodule Crap.Complexity do
     functions(body, module)
   end
 
-  defp functions({kind, meta, [head, [do: body]]}, module) when kind in [:def, :defp] do
+  defp functions({kind, meta, [head, [do: body]]}, module) when kind in @definition_kinds do
     {function, arity, guards} = function_name_arity_and_guards(head)
 
     [
