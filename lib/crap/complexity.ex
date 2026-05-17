@@ -86,6 +86,16 @@ defmodule Crap.Complexity do
     Enum.flat_map(list, &functions(&1, module))
   end
 
+  defp functions({branch, _meta, args}, module) when branch in [:if, :unless] do
+    case List.last(args) do
+      branches when is_list(branches) ->
+        Enum.flat_map(Keyword.values(branches), &functions(&1, module))
+
+      _other ->
+        []
+    end
+  end
+
   defp functions(_quoted, _module), do: []
 
   defp aggregate_clauses(functions) do

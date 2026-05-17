@@ -15,6 +15,24 @@ defmodule Crap.ComplexityTest do
                Crap.Complexity.from_string(source)
     end
 
+    test "discovers functions defined inside module-level if and unless" do
+      source = """
+      defmodule Example do
+        if true do
+          def enabled, do: true
+        end
+
+        unless false do
+          def also_enabled, do: true
+        end
+      end
+      """
+
+      assert {:ok, results} = Crap.Complexity.from_string(source)
+      assert Enum.find(results, &(&1.function == :enabled))
+      assert Enum.find(results, &(&1.function == :also_enabled))
+    end
+
     test "counts if, unless, and boolean operators as decision points" do
       source = """
       defmodule Example do
