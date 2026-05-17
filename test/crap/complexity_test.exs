@@ -99,7 +99,7 @@ defmodule Crap.ComplexityTest do
                function: :size,
                arity: 1,
                line: 2,
-               complexity: 2
+               complexity: 3
              }
 
       assert Enum.find(results, &(&1.function == :hidden)) == %{
@@ -109,6 +109,19 @@ defmodule Crap.ComplexityTest do
                line: 7,
                complexity: 1
              }
+    end
+
+    test "counts multiple guarded clauses as function-level decision paths" do
+      source = """
+      defmodule Example do
+        def classify(value) when is_integer(value) and value > 0, do: :positive
+        def classify(value) when is_integer(value) and value < 0, do: :negative
+        def classify(_value), do: :other
+      end
+      """
+
+      assert {:ok, [%{module: Example, function: :classify, arity: 1, line: 2, complexity: 5}]} =
+               Crap.Complexity.from_string(source)
     end
 
     test "returns an error tuple for invalid Elixir source" do

@@ -15,7 +15,7 @@ defmodule Crap.Complexity do
   * Boolean `and`, `or`, `&&`, and `||` operators add `1` each.
   * Boolean operators in function guards add `1` each.
   * Multiple clauses for the same `{module, function, arity}` are aggregated by
-    keeping the maximum clause complexity and earliest line number.
+    summing one path per clause plus each clause's guard/body decisions.
   """
 
   @doc """
@@ -87,8 +87,10 @@ defmodule Crap.Complexity do
     |> Enum.group_by(&{&1.module, &1.function, &1.arity})
     |> Enum.map(fn {_key, clauses} ->
       first = Enum.min_by(clauses, &(&1.line || 0))
-      max_complexity = clauses |> Enum.map(& &1.complexity) |> Enum.max()
-      %{first | complexity: max_complexity}
+
+      complexity = clauses |> Enum.map(& &1.complexity) |> Enum.sum()
+
+      %{first | complexity: complexity}
     end)
     |> Enum.sort_by(&{inspect(&1.module), &1.line || 0, &1.function, &1.arity})
   end
