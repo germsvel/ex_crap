@@ -140,7 +140,7 @@ defmodule Crap.Complexity do
          _in_executable?,
          _implemented_definitions
        ) do
-    not module_alias?(module_ast) ||
+    not module_name_ast?(module_ast) ||
       malformed_executable_container?(
         body,
         module_name(module_ast, current_module),
@@ -272,8 +272,43 @@ defmodule Crap.Complexity do
        ),
        do: false
 
-  defp module_alias?({:__aliases__, _meta, parts}) when is_list(parts), do: true
+  defp module_name_ast?(module_ast) when is_atom(module_ast), do: valid_module_atom?(module_ast)
+  defp module_name_ast?(module_ast), do: module_alias?(module_ast)
+
+  defp module_alias?({:__aliases__, _meta, parts}) when is_list(parts) do
+    Enum.all?(parts, &module_alias_part?/1)
+  end
+
   defp module_alias?(_ast), do: false
+
+  defp module_alias_part?({:__MODULE__, _meta, nil}), do: true
+  defp module_alias_part?(part), do: is_atom(part)
+
+  defp module_concat_ast?(
+         {{:., _dot_meta, [{:__aliases__, _alias_meta, [:Module]}, :concat]}, _call_meta, args}
+       ) do
+    module_concat_args?(args)
+  end
+
+  defp module_concat_ast?(_ast), do: false
+
+  defp module_concat_args?([left, right]),
+    do: module_concat_arg?(left) and module_concat_arg?(right)
+
+  defp module_concat_args?([parts]) when is_list(parts),
+    do: Enum.all?(parts, &module_concat_arg?/1)
+
+  defp module_concat_args?(_args), do: false
+
+  defp module_concat_arg?({:__MODULE__, _meta, nil}), do: true
+  defp module_concat_arg?(arg) when is_atom(arg), do: true
+  defp module_concat_arg?(arg), do: module_alias?(arg)
+
+  defp valid_module_atom?(module) do
+    module
+    |> Atom.to_string()
+    |> String.starts_with?("Elixir.")
+  end
 
   defp implemented_definitions(body) do
     body
@@ -326,7 +361,7 @@ defmodule Crap.Complexity do
 
   defp local_protocol_modules({:defprotocol, _meta, [protocol_ast, [do: _body]]}, current_module)
        when not is_nil(current_module) do
-    if module_alias?(protocol_ast), do: [module_name(protocol_ast, current_module)], else: []
+    if module_name_ast?(protocol_ast), do: [module_name(protocol_ast, current_module)], else: []
   end
 
   defp local_protocol_modules(_quoted, _current_module), do: []
@@ -337,7 +372,7 @@ defmodule Crap.Complexity do
 
   defp local_module_declarations({:defmodule, _meta, [module_ast, [do: _body]]}, current_module)
        when not is_nil(current_module) do
-    if module_alias?(module_ast), do: [module_name(module_ast, current_module)], else: []
+    if module_name_ast?(module_ast), do: [module_name(module_ast, current_module)], else: []
   end
 
   defp local_module_declarations(_quoted, _current_module), do: []
@@ -375,14 +410,17 @@ defmodule Crap.Complexity do
   end
 
   defp defimpl_name_ast?(protocol_ast, for_ast) when is_list(for_ast) do
-    module_alias?(protocol_ast) and Enum.all?(for_ast, &defimpl_target_ast?/1)
+    defimpl_protocol_ast?(protocol_ast) and Enum.all?(for_ast, &defimpl_target_ast?/1)
   end
 
   defp defimpl_name_ast?(protocol_ast, for_ast),
-    do: module_alias?(protocol_ast) and defimpl_target_ast?(for_ast)
+    do: defimpl_protocol_ast?(protocol_ast) and defimpl_target_ast?(for_ast)
+
+  defp defimpl_protocol_ast?(protocol_ast),
+    do: module_name_ast?(protocol_ast) or module_concat_ast?(protocol_ast)
 
   defp defimpl_target_ast?(for_ast) when is_atom(for_ast), do: true
-  defp defimpl_target_ast?(for_ast), do: module_alias?(for_ast)
+  defp defimpl_target_ast?(for_ast), do: module_alias?(for_ast) or module_concat_ast?(for_ast)
 
   defp aggregate_clauses(functions) do
     functions
@@ -397,14 +435,43 @@ defmodule Crap.Complexity do
     |> Enum.sort_by(&{inspect(&1.module), &1.line || 0, &1.function, &1.arity})
   end
 
+  defp module_name({:__aliases__, _meta, [{:__MODULE__, _module_meta, nil} | parts]}, nil),
+    do: Module.concat(parts)
+
+  defp module_name({:__aliases__, _meta, [{:__MODULE__, _module_meta, nil} | parts]}, parent),
+    do: Module.concat([parent | parts])
+
   defp module_name({:__aliases__, _meta, parts}, nil), do: Module.concat(parts)
   defp module_name({:__aliases__, _meta, parts}, parent), do: Module.concat([parent | parts])
+  defp module_name(module, _parent) when is_atom(module), do: module
+
+  defp module_name(
+         {{:., _dot_meta, [{:__aliases__, _meta, [:Module]}, :concat]}, _call_meta, args},
+         current_module
+       ) do
+    args
+    |> module_concat_parts(current_module)
+    |> Module.concat()
+  end
+
+  defp module_concat_parts([parts], current_module) when is_list(parts),
+    do: Enum.map(parts, &module_concat_part(&1, current_module))
+
+  defp module_concat_parts(parts, current_module),
+    do: Enum.map(parts, &module_concat_part(&1, current_module))
+
+  defp module_concat_part({:__MODULE__, _meta, nil}, current_module), do: current_module
+
+  defp module_concat_part({:__aliases__, _meta, _parts} = alias_ast, _current_module),
+    do: module_name(alias_ast, nil)
+
+  defp module_concat_part(module, _current_module) when is_atom(module), do: module
 
   defp protocol_module_name(protocol_ast, current_module, local_protocols)
        when not is_nil(current_module) do
     local_protocol = module_name(protocol_ast, current_module)
 
-    if MapSet.member?(local_protocols, local_protocol) do
+    if current_module_reference?(protocol_ast) or MapSet.member?(local_protocols, local_protocol) do
       local_protocol
     else
       module_name(protocol_ast, nil)
@@ -452,12 +519,25 @@ defmodule Crap.Complexity do
   defp target_module_name(for_ast, current_module, local_modules) do
     local_module = module_name(for_ast, current_module)
 
-    if MapSet.member?(local_modules, local_module) do
+    if current_module_reference?(for_ast) or MapSet.member?(local_modules, local_module) do
       local_module
     else
       module_name(for_ast, nil)
     end
   end
+
+  defp current_module_reference?({:__MODULE__, _meta, nil}), do: true
+
+  defp current_module_reference?({:__aliases__, _meta, parts}),
+    do: Enum.any?(parts, &current_module_reference?/1)
+
+  defp current_module_reference?(
+         {{:., _dot_meta, [{:__aliases__, _meta, [:Module]}, :concat]}, _call_meta, args}
+       ) do
+    Enum.any?(List.flatten(args), &current_module_reference?/1)
+  end
+
+  defp current_module_reference?(_ast), do: false
 
   defp function_name_arity_and_guards({:when, _meta, [head | guards]}) do
     {name, arity, existing_guards} = function_name_arity_and_guards(head)
@@ -506,6 +586,10 @@ defmodule Crap.Complexity do
 
   defp decision_count({:receive, _meta, args}) do
     branch_count(args) + receive_after_count(args) + decision_count(args)
+  end
+
+  defp decision_count({:fn, _meta, clauses}) do
+    arrow_count(clauses) + decision_count(clauses)
   end
 
   defp decision_count({:defmodule, _meta, _args}), do: 0

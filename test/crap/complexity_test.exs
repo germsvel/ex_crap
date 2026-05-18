@@ -174,6 +174,20 @@ defmodule Crap.ComplexityTest do
       assert {:ok, [%{complexity: 4}]} = Crap.Complexity.from_string(source)
     end
 
+    test "counts multiple comprehension generators and filters with reduce" do
+      source = """
+      defmodule Example do
+        def active_pairs(groups) do
+          for group <- groups, user <- group.users, user.active?, reduce: [] do
+            acc -> [{group.name, user.name} | acc]
+          end
+        end
+      end
+      """
+
+      assert {:ok, [%{complexity: 4}]} = Crap.Complexity.from_string(source)
+    end
+
     test "counts receive clauses and after timeout as decision points" do
       source = """
       defmodule Example do
@@ -316,6 +330,23 @@ defmodule Crap.ComplexityTest do
                Crap.Complexity.from_string(source)
     end
 
+    test "counts anonymous function clauses and guarded clause decisions" do
+      source = """
+      defmodule Example do
+        def classify_fun do
+          fn
+            0 -> :zero
+            value when value > 0 and value < 10 -> :small
+            _ -> :other
+          end
+        end
+      end
+      """
+
+      assert {:ok, [%{module: Example, function: :classify_fun, arity: 0, complexity: 5}]} =
+               Crap.Complexity.from_string(source)
+    end
+
     test "discovers defmacro and defmacrop definitions" do
       source = """
       defmodule Example do
@@ -396,6 +427,55 @@ defmodule Crap.ComplexityTest do
       assert Crap.Complexity.from_string(source) == {:ok, []}
     end
 
+    test "accepts atom and __MODULE__ based module names" do
+      atom_source = ~S'''
+      defmodule :"Elixir.AtomNamed" do
+        def run, do: :ok
+      end
+      '''
+
+      nested_source = """
+      defmodule Outer do
+        defmodule __MODULE__.Nested do
+          def run, do: :ok
+        end
+      end
+      """
+
+      assert {:ok, [%{module: AtomNamed, function: :run, arity: 0, complexity: 1}]} =
+               Crap.Complexity.from_string(atom_source)
+
+      assert {:ok, [%{module: Outer.Nested, function: :run, arity: 0, complexity: 1}]} =
+               Crap.Complexity.from_string(nested_source)
+    end
+
+    test "ignores common declarations and helper constructs safely" do
+      source = """
+      defmodule Example.Helpers do
+        use GenServer
+        alias Example.{One, Two}
+        import Kernel, except: [length: 1]
+        require Logger
+
+        @moduledoc false
+        @type id :: term()
+        @spec run(term()) :: term()
+        @callback call(term()) :: term()
+
+        defstruct [:name]
+        defexception [:message]
+        defguard is_present(value) when not is_nil(value)
+        defguardp is_named(value) when is_map_key(value, :name)
+        defdelegate delegated(value), to: One, as: :run
+
+        def run(value), do: value
+      end
+      """
+
+      assert {:ok, [%{module: Example.Helpers, function: :run, arity: 1, complexity: 1}]} =
+               Crap.Complexity.from_string(source)
+    end
+
     test "analyzes functions inside defimpl blocks" do
       source = """
       defimpl String.Chars, for: Example do
@@ -445,6 +525,44 @@ defmodule Crap.ComplexityTest do
                %{module: String.Chars.Example.One, function: :to_string, arity: 1, complexity: 1},
                %{module: String.Chars.Example.Two, function: :to_string, arity: 1, complexity: 1}
              ]
+    end
+
+    test "accepts defimpl Module.concat protocol and target forms" do
+      source = """
+      defimpl Module.concat(String, Chars), for: Module.concat(Example, Target) do
+        def to_string(value), do: inspect(value)
+      end
+      """
+
+      assert {:ok,
+              [
+                %{
+                  module: String.Chars.Example.Target,
+                  function: :to_string,
+                  arity: 1,
+                  complexity: 1
+                }
+               ]} = Crap.Complexity.from_string(source)
+    end
+
+    test "preserves explicit __MODULE__ context in nested defimpl Module.concat forms" do
+      source = """
+      defmodule Outer do
+        defimpl Module.concat(__MODULE__, P), for: __MODULE__.S do
+          def x(value), do: value
+        end
+      end
+      """
+
+      assert {:ok,
+              [
+                %{
+                  module: Outer.P.Outer.S,
+                  function: :x,
+                  arity: 1,
+                  complexity: 1
+                }
+              ]} = Crap.Complexity.from_string(source)
     end
 
     test "analyzes nested defimpl blocks without explicit for target" do
