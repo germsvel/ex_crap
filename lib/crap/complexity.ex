@@ -434,13 +434,7 @@ defmodule Crap.Complexity do
 
   defp local_alias_declarations({:alias, _meta, [alias_ast, opts]}, current_module)
        when is_list(opts) do
-    case alias_name(alias_ast, opts) do
-      {:ok, alias_name} ->
-        %{alias_name => alias_declaration_module_name(alias_ast, current_module)}
-
-      _other ->
-        %{}
-    end
+    alias_declaration(alias_ast, opts, current_module)
   end
 
   defp local_alias_declarations(
@@ -462,7 +456,13 @@ defmodule Crap.Complexity do
   end
 
   defp local_alias_declarations({:alias, _meta, [alias_ast]}, current_module) do
-    case alias_name(alias_ast, []) do
+    alias_declaration(alias_ast, [], current_module)
+  end
+
+  defp local_alias_declarations(_quoted, _current_module), do: %{}
+
+  defp alias_declaration(alias_ast, opts, current_module) do
+    case alias_name(alias_ast, opts) do
       {:ok, alias_name} ->
         %{alias_name => alias_declaration_module_name(alias_ast, current_module)}
 
@@ -470,8 +470,6 @@ defmodule Crap.Complexity do
         %{}
     end
   end
-
-  defp local_alias_declarations(_quoted, _current_module), do: %{}
 
   defp alias_name({:__aliases__, _meta, parts}, []) when is_list(parts) do
     case List.last(parts) do
@@ -501,7 +499,7 @@ defmodule Crap.Complexity do
 
   defp defimpl_parts([protocol_ast, opts, [do: body]], current_module)
        when is_list(opts) do
-    with {:ok, for_ast} <- defimpl_for_ast(opts, current_module, body) do
+    with {:ok, for_ast} <- defimpl_for_ast(opts, current_module) do
       {:ok, protocol_ast, for_ast, body}
     end
   end
@@ -523,7 +521,7 @@ defmodule Crap.Complexity do
 
   defp defimpl_parts(_args, _current_module), do: :error
 
-  defp defimpl_for_ast(opts, current_module, _body) do
+  defp defimpl_for_ast(opts, current_module) do
     case Keyword.fetch(opts, :for) do
       {:ok, for_ast} -> {:ok, for_ast}
       :error when not is_nil(current_module) -> {:ok, current_module}
@@ -615,10 +613,10 @@ defmodule Crap.Complexity do
          local_protocols,
          local_modules,
          local_aliases
-       )
-       when is_list(for_ast) do
-    Enum.map(
-      for_ast,
+       ) do
+    for_ast
+    |> List.wrap()
+    |> Enum.map(
       &defimpl_module_name(
         protocol_ast,
         &1,
@@ -628,26 +626,6 @@ defmodule Crap.Complexity do
         local_aliases
       )
     )
-  end
-
-  defp defimpl_module_names(
-         protocol_ast,
-         for_ast,
-         current_module,
-         local_protocols,
-         local_modules,
-         local_aliases
-       ) do
-    [
-      defimpl_module_name(
-        protocol_ast,
-        for_ast,
-        current_module,
-        local_protocols,
-        local_modules,
-        local_aliases
-      )
-    ]
   end
 
   defp defimpl_module_name(

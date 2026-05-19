@@ -1138,13 +1138,13 @@ defmodule Crap.ComplexityPropertyTest do
   end
 
   defp expected_result(model) do
-    %{
-      module: Module.concat([model.module]),
-      function: String.to_atom(model.function),
-      arity: model.arity,
-      line: expected_line(model),
-      complexity: expected_complexity(model)
-    }
+    expected_row(
+      Module.concat([model.module]),
+      String.to_atom(model.function),
+      model.arity,
+      expected_line(model),
+      expected_complexity(model)
+    )
   end
 
   defp expected_line(%{declaration?: true}), do: 3
@@ -1171,90 +1171,98 @@ defmodule Crap.ComplexityPropertyTest do
         clauses_complexity(clauses)
       end
 
-    %{
-      module: Module.concat([Module.concat([model.protocol]), Module.concat([target])]),
-      function: String.to_atom(model.function),
-      arity: model.arity,
-      line: if(model.keyword_form?, do: 1, else: 2),
-      complexity: complexity
-    }
+    expected_row(
+      Module.concat([Module.concat([model.protocol]), Module.concat([target])]),
+      String.to_atom(model.function),
+      model.arity,
+      if(model.keyword_form?, do: 1, else: 2),
+      complexity
+    )
   end
 
   defp expected_nested_module_result(model) do
-    %{
-      module: GeneratedOuter.GeneratedInner,
-      function: String.to_atom(model.function),
-      arity: model.arity,
-      line: 3,
-      complexity: clauses_complexity(model.clauses)
-    }
+    expected_row(
+      GeneratedOuter.GeneratedInner,
+      String.to_atom(model.function),
+      model.arity,
+      3,
+      clauses_complexity(model.clauses)
+    )
   end
 
   defp expected_atom_module_result(model) do
-    %{
-      module: Module.concat([model.module]),
-      function: String.to_atom(model.function),
-      arity: model.arity,
-      line: 2,
-      complexity: clauses_complexity(model.clauses)
-    }
+    expected_row(
+      Module.concat([model.module]),
+      String.to_atom(model.function),
+      model.arity,
+      2,
+      clauses_complexity(model.clauses)
+    )
   end
 
   defp expected_module_concat_defimpl_result(model) do
-    %{
-      module: String.Chars.Generated.Target,
-      function: :to_string,
-      arity: 1,
-      line: 2,
-      complexity: clauses_complexity(model.clauses)
-    }
+    expected_row(
+      String.Chars.Generated.Target,
+      :to_string,
+      1,
+      2,
+      clauses_complexity(model.clauses)
+    )
   end
 
   defp expected_nested_implicit_defimpl_result(model) do
-    %{
-      module: Module.concat([Module.concat([model.protocol]), Module.concat([model.target])]),
-      function: :to_string,
-      arity: 1,
-      line: 3,
-      complexity: clauses_complexity(model.clauses)
-    }
+    expected_row(
+      Module.concat([Module.concat([model.protocol]), Module.concat([model.target])]),
+      :to_string,
+      1,
+      3,
+      clauses_complexity(model.clauses)
+    )
   end
 
   defp expected_nested_alias_defimpl_result(model) do
-    %{
-      module: Module.concat([Module.concat([model.protocol]), Module.concat([model.target])]),
-      function: :to_string,
-      arity: 1,
-      line: 6,
-      complexity: clauses_complexity(model.clauses)
-    }
+    expected_row(
+      Module.concat([Module.concat([model.protocol]), Module.concat([model.target])]),
+      :to_string,
+      1,
+      6,
+      clauses_complexity(model.clauses)
+    )
   end
 
   defp expected_nested_grouped_alias_defimpl_result(model) do
-    %{
-      module:
-        Module.concat([
-          Module.concat([model.protocol]),
-          Module.concat(["Example", model.target_alias])
-        ]),
-      function: :to_string,
-      arity: 1,
-      line: 5,
-      complexity: clauses_complexity(model.clauses)
-    }
+    expected_row(
+      Module.concat([
+        Module.concat([model.protocol]),
+        Module.concat(["Example", model.target_alias])
+      ]),
+      :to_string,
+      1,
+      5,
+      clauses_complexity(model.clauses)
+    )
   end
 
   defp expected_nested_local_defimpl_result(model) do
+    expected_row(
+      Module.concat([
+        Module.concat([model.outer, model.protocol]),
+        Module.concat([model.outer, model.target])
+      ]),
+      :to_string,
+      1,
+      11,
+      clauses_complexity(model.clauses)
+    )
+  end
+
+  defp expected_row(module, function, arity, line, complexity) do
     %{
-      module:
-        Module.concat([
-          Module.concat([model.outer, model.protocol]),
-          Module.concat([model.outer, model.target])
-        ]),
-      function: :to_string,
-      arity: 1,
-      line: 11,
-      complexity: clauses_complexity(model.clauses)
+      module: module,
+      function: function,
+      arity: arity,
+      line: line,
+      complexity: complexity
     }
   end
 
