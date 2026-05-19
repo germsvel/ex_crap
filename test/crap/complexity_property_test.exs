@@ -30,6 +30,28 @@ defmodule Crap.ComplexityPropertyTest do
               ]}
   end
 
+  test "defimpl for: nil is analyzed" do
+    source = """
+    defmodule Example do
+      defimpl String.Chars, for: nil do
+        def to_string(_), do: :ok
+      end
+    end
+    """
+
+    assert Crap.Complexity.from_string(source) ==
+             {:ok,
+              [
+                %{
+                  module: String.Chars,
+                  function: :to_string,
+                  arity: 1,
+                  line: 3,
+                  complexity: 1
+                }
+              ]}
+  end
+
   test "defimpl does not resolve later local target declarations retroactively" do
     source = """
     defmodule GeneratedLocalOrder do

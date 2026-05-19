@@ -614,8 +614,10 @@ defmodule Crap.Complexity do
          local_modules,
          local_aliases
        ) do
-    for_ast
-    |> List.wrap()
+    case for_ast do
+      nil -> [nil]
+      targets -> List.wrap(targets)
+    end
     |> Enum.map(
       &defimpl_module_name(
         protocol_ast,
