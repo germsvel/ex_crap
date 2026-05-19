@@ -53,13 +53,12 @@ defmodule Crap.ComplexityPropertyTest do
       function: function_name(),
       definition_kind: StreamData.member_of(@definition_kinds),
       arity: StreamData.integer(0..3),
-      declaration?: StreamData.constant(false),
       clauses: clauses()
     })
   end
 
   defp valid_declaration_model do
-    StreamData.map(valid_function_model(), &%{&1 | declaration?: true})
+    StreamData.map(valid_function_model(), &Map.put(&1, :declaration?, true))
   end
 
   defp unmatched_declaration_model do
@@ -108,14 +107,14 @@ defmodule Crap.ComplexityPropertyTest do
 
   defp clause do
     StreamData.fixed_map(%{
-      guard: boolean_expression(),
+      guard: operator_sequence(),
       body: StreamData.list_of(body_construct(), min_length: 0, max_length: 3)
     })
   end
 
   defp body_construct do
     StreamData.one_of([
-      StreamData.map(boolean_expression(), &%{kind: :if, boolean_operators: &1.operators}),
+      StreamData.map(operator_sequence(), &%{kind: :if, boolean_operators: &1}),
       StreamData.fixed_map(%{
         kind: StreamData.constant(:case),
         branches: StreamData.integer(1..3),
@@ -132,17 +131,15 @@ defmodule Crap.ComplexityPropertyTest do
     ])
   end
 
-  defp boolean_expression do
-    StreamData.map(operator_sequence(), &%{operators: &1})
-  end
-
   defp operator_sequence do
     StreamData.list_of(StreamData.member_of(@boolean_operators), min_length: 0, max_length: 2)
   end
 
   defp render_valid_function(model) do
     declarations =
-      if model.declaration?, do: [render_head(model.definition_kind, model)], else: []
+      if Map.get(model, :declaration?, false),
+        do: [render_head(model.definition_kind, model)],
+        else: []
 
     implementations = Enum.map(model.clauses, &render_clause(model.definition_kind, model, &1))
 
@@ -154,18 +151,10 @@ defmodule Crap.ComplexityPropertyTest do
   end
 
   defp render_wrong_kind_declaration(model) do
-    body_model = %{
-      module: model.module,
-      function: model.function,
-      definition_kind: model.implementation_kind,
-      arity: model.arity,
-      clauses: model.clauses
-    }
-
     render_module(
       model.module,
       [render_head(model.declaration_kind, model)] ++
-        Enum.map(model.clauses, &render_clause(model.implementation_kind, body_model, &1))
+        Enum.map(model.clauses, &render_clause(model.implementation_kind, model, &1))
     )
   end
 
@@ -201,7 +190,7 @@ defmodule Crap.ComplexityPropertyTest do
   end
 
   defp render_clause(kind, model, clause) do
-    guard = render_guard(clause.guard.operators)
+    guard = render_guard(clause.guard)
 
     """
     #{kind} #{model.function}(#{arguments(model.arity)})#{guard} do
@@ -244,9 +233,8 @@ defmodule Crap.ComplexityPropertyTest do
       1..branches
       |> Enum.map(fn index ->
         operators = Enum.at(guard_operators, index - 1, [])
-        guard = if operators == [], do: "", else: " when " <> boolean_chain(operators)
 
-        "#{index}#{guard} -> :branch_#{index}"
+        "#{index}#{render_guard(operators)} -> :branch_#{index}"
       end)
       |> Enum.join("\n")
 
@@ -280,9 +268,8 @@ defmodule Crap.ComplexityPropertyTest do
       1..branches
       |> Enum.map(fn index ->
         operators = Enum.at(guard_operators, index - 1, [])
-        guard = if operators == [], do: "", else: " when " <> boolean_chain(operators)
 
-        ":error#{guard} -> :error_#{index}"
+        ":error#{render_guard(operators)} -> :error_#{index}"
       end)
       |> Enum.join("\n")
 
@@ -323,7 +310,7 @@ defmodule Crap.ComplexityPropertyTest do
 
   defp expected_complexity(model) do
     Enum.reduce(model.clauses, 0, fn clause, total ->
-      total + 1 + length(clause.guard.operators) +
+      total + 1 + length(clause.guard) +
         Enum.reduce(clause.body, 0, &(&2 + construct_score(&1)))
     end)
   end
