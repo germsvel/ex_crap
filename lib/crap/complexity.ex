@@ -76,8 +76,8 @@ defmodule Crap.Complexity do
     functions(
       body,
       module,
-      body |> local_protocol_modules(module) |> MapSet.new(),
-      body |> local_module_declarations(module) |> MapSet.new(),
+      MapSet.new(),
+      MapSet.new(),
       %{}
     )
   end
@@ -134,14 +134,30 @@ defmodule Crap.Complexity do
          local_modules,
          local_aliases
        ) do
-    {results, _aliases} =
-      Enum.reduce(expressions, {[], local_aliases}, fn expression, {results, aliases} ->
+    {results, _protocols, _modules, _aliases} =
+      Enum.reduce(expressions, {[], local_protocols, local_modules, local_aliases}, fn expression,
+                                                                                       {results,
+                                                                                        protocols,
+                                                                                        modules,
+                                                                                        aliases} ->
         expression_results =
-          functions(expression, module, local_protocols, local_modules, aliases)
+          functions(expression, module, protocols, modules, aliases)
+
+        updated_protocols =
+          expression
+          |> local_protocol_modules(module)
+          |> MapSet.new()
+          |> MapSet.union(protocols)
+
+        updated_modules =
+          expression
+          |> local_module_declarations(module)
+          |> MapSet.new()
+          |> MapSet.union(modules)
 
         updated_aliases = Map.merge(aliases, local_alias_declarations(expression, module))
 
-        {results ++ expression_results, updated_aliases}
+        {results ++ expression_results, updated_protocols, updated_modules, updated_aliases}
       end)
 
     results

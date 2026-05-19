@@ -30,6 +30,59 @@ defmodule Crap.ComplexityPropertyTest do
               ]}
   end
 
+  test "defimpl does not resolve later local target declarations retroactively" do
+    source = """
+    defmodule GeneratedLocalOrder do
+      defprotocol P do
+        def to_string(value)
+      end
+
+      defimpl P, for: S do
+        def to_string(value), do: inspect(value)
+      end
+
+      defmodule S do
+        defstruct []
+      end
+    end
+    """
+
+    assert Crap.Complexity.from_string(source) ==
+             {:ok,
+              [
+                %{
+                  module: GeneratedLocalOrder.P.S,
+                  function: :to_string,
+                  arity: 1,
+                  line: 7,
+                  complexity: 1
+                }
+              ]}
+  end
+
+  test "rescue guards are not generated because Elixir rejects them" do
+    source = """
+    defmodule GeneratedInvalidRescueGuard do
+      def run do
+        try do
+          raise "x"
+        rescue
+          error in RuntimeError when is_exception(error) -> :ok
+        end
+      end
+    end
+    """
+
+    compiler_output =
+      ExUnit.CaptureIO.capture_io(:stderr, fn ->
+        assert_raise CompileError, fn ->
+          Code.compile_string(source)
+        end
+      end)
+
+    assert compiler_output =~ ~s(invalid "rescue" clause)
+  end
+
   property "valid generated function bodies cover boolean operators and keep guards guard-valid" do
     check all(operator <- StreamData.member_of(@boolean_operators), max_runs: 20) do
       model = %{
@@ -52,7 +105,7 @@ defmodule Crap.ComplexityPropertyTest do
     end
   end
 
-  property "valid generated try rescue clauses use compiler-valid rescue shapes and catch guards" do
+  property "valid generated try clauses use unguarded rescue shapes and guarded catch clauses" do
     check all(
             rescue_branches <- StreamData.integer(1..3),
             catch_guard_operators <-
