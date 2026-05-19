@@ -78,7 +78,7 @@ defmodule Crap.Complexity do
       module,
       body |> local_protocol_modules(module) |> MapSet.new(),
       body |> local_module_declarations(module) |> MapSet.new(),
-      local_alias_declarations(body, module)
+      %{}
     )
   end
 
@@ -134,10 +134,17 @@ defmodule Crap.Complexity do
          local_modules,
          local_aliases
        ) do
-    Enum.flat_map(
-      expressions,
-      &functions(&1, module, local_protocols, local_modules, local_aliases)
-    )
+    {results, _aliases} =
+      Enum.reduce(expressions, {[], local_aliases}, fn expression, {results, aliases} ->
+        expression_results =
+          functions(expression, module, local_protocols, local_modules, aliases)
+
+        updated_aliases = Map.merge(aliases, local_alias_declarations(expression, module))
+
+        {results ++ expression_results, updated_aliases}
+      end)
+
+    results
   end
 
   defp functions(list, module, local_protocols, local_modules, local_aliases)
@@ -409,24 +416,48 @@ defmodule Crap.Complexity do
 
   defp local_module_declarations(_quoted, _current_module), do: []
 
-  defp local_alias_declarations({:__block__, _meta, expressions}, current_module) do
-    expressions
-    |> Enum.flat_map(&local_alias_declarations(&1, current_module))
-    |> Map.new()
-  end
-
   defp local_alias_declarations({:alias, _meta, [alias_ast, opts]}, current_module)
        when is_list(opts) do
-    case Keyword.fetch(opts, :as) do
-      {:ok, {:__aliases__, _meta, [alias_name]}} when is_atom(alias_name) ->
-        [{alias_name, alias_declaration_module_name(alias_ast, current_module)}]
+    case alias_name(alias_ast, opts) do
+      {:ok, alias_name} ->
+        %{alias_name => alias_declaration_module_name(alias_ast, current_module)}
 
       _other ->
-        []
+        %{}
+    end
+  end
+
+  defp local_alias_declarations({:alias, _meta, [alias_ast]}, current_module) do
+    case alias_name(alias_ast, []) do
+      {:ok, alias_name} ->
+        %{alias_name => alias_declaration_module_name(alias_ast, current_module)}
+
+      _other ->
+        %{}
     end
   end
 
   defp local_alias_declarations(_quoted, _current_module), do: %{}
+
+  defp alias_name({:__aliases__, _meta, parts}, []) when is_list(parts) do
+    case List.last(parts) do
+      alias_name when is_atom(alias_name) -> {:ok, alias_name}
+      _other -> :error
+    end
+  end
+
+  defp alias_name(_alias_ast, []) do
+    :error
+  end
+
+  defp alias_name(_alias_ast, opts) do
+    case Keyword.fetch(opts, :as) do
+      {:ok, {:__aliases__, _meta, [alias_name]}} when is_atom(alias_name) -> {:ok, alias_name}
+      {:ok, alias_name} when is_atom(alias_name) -> {:ok, alias_name}
+      {:ok, _other} -> :error
+      :error -> :error
+    end
+  end
 
   defp alias_declaration_module_name(alias_ast, current_module) do
     parent = if current_module_reference?(alias_ast), do: current_module, else: nil

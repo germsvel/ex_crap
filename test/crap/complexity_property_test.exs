@@ -4,6 +4,7 @@ defmodule Crap.ComplexityPropertyTest do
 
   @definition_kinds [:def, :defp, :defmacro, :defmacrop]
   @boolean_operators [:and, :or, :&&, :||]
+  @guard_boolean_operators [:and, :or]
 
   property "valid generated definitions return one row with model-derived complexity" do
     check all(model <- valid_function_model(), max_runs: 50) do
@@ -151,6 +152,15 @@ defmodule Crap.ComplexityPropertyTest do
     check all(model <- nested_alias_defimpl_model(), max_runs: 50) do
       source = render_nested_alias_defimpl(model)
       expected = expected_nested_alias_defimpl_result(model)
+
+      assert_analysis(source, model, {:ok, [expected]})
+    end
+  end
+
+  property "valid generated nested defimpl forms resolve local protocols and modules" do
+    check all(model <- nested_local_defimpl_model(), max_runs: 50) do
+      source = render_nested_local_defimpl(model)
+      expected = expected_nested_local_defimpl_result(model)
 
       assert_analysis(source, model, {:ok, [expected]})
     end
@@ -306,6 +316,17 @@ defmodule Crap.ComplexityPropertyTest do
     })
   end
 
+  defp nested_local_defimpl_model do
+    StreamData.fixed_map(%{
+      outer: StreamData.constant("GeneratedLocal"),
+      protocol: StreamData.member_of(["P", "Protocol.Nested"]),
+      target: StreamData.member_of(["S", "Target.Nested"]),
+      function: StreamData.constant("to_string"),
+      arity: StreamData.constant(1),
+      clauses: clauses([:if, :case, :with, :unless, :cond])
+    })
+  end
+
   defp invalid_defmodule_model do
     StreamData.member_of([
       %{kind: :integer_name},
@@ -330,7 +351,7 @@ defmodule Crap.ComplexityPropertyTest do
 
   defp clause(body_constructs) do
     StreamData.fixed_map(%{
-      guard: operator_sequence(),
+      guard: guard_operator_sequence(),
       body: StreamData.list_of(body_construct(body_constructs), min_length: 0, max_length: 3)
     })
   end
@@ -352,7 +373,7 @@ defmodule Crap.ComplexityPropertyTest do
       kind: StreamData.constant(:case),
       branches: StreamData.integer(1..3),
       clause_guard_operators:
-        StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3)
+        StreamData.list_of(guard_operator_sequence(), min_length: 0, max_length: 3)
     })
   end
 
@@ -370,7 +391,8 @@ defmodule Crap.ComplexityPropertyTest do
       kind: StreamData.constant(:with),
       generators: StreamData.integer(1..3),
       else_branches: StreamData.integer(0..3),
-      else_guard_operators: StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3)
+      else_guard_operators:
+        StreamData.list_of(guard_operator_sequence(), min_length: 0, max_length: 3)
     })
   end
 
@@ -379,10 +401,9 @@ defmodule Crap.ComplexityPropertyTest do
       kind: StreamData.constant(:try),
       else_branches: StreamData.integer(0..3),
       rescue_branches: StreamData.integer(0..3),
-      rescue_guard_operators:
-        StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3),
       catch_branches: StreamData.integer(0..3),
-      catch_guard_operators: StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3)
+      catch_guard_operators:
+        StreamData.list_of(guard_operator_sequence(), min_length: 0, max_length: 3)
     })
   end
 
@@ -400,7 +421,7 @@ defmodule Crap.ComplexityPropertyTest do
       kind: StreamData.constant(:receive),
       branches: StreamData.integer(1..3),
       clause_guard_operators:
-        StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3),
+        StreamData.list_of(guard_operator_sequence(), min_length: 0, max_length: 3),
       after?: StreamData.boolean()
     })
   end
@@ -410,7 +431,7 @@ defmodule Crap.ComplexityPropertyTest do
       kind: StreamData.constant(:fn),
       clauses: StreamData.integer(1..3),
       clause_guard_operators:
-        StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3)
+        StreamData.list_of(guard_operator_sequence(), min_length: 0, max_length: 3)
     })
   end
 
@@ -419,7 +440,8 @@ defmodule Crap.ComplexityPropertyTest do
       kind: StreamData.constant(:nested_if_case),
       if_operators: operator_sequence(),
       case_branches: StreamData.integer(1..3),
-      case_guard_operators: StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3)
+      case_guard_operators:
+        StreamData.list_of(guard_operator_sequence(), min_length: 0, max_length: 3)
     })
   end
 
@@ -434,6 +456,13 @@ defmodule Crap.ComplexityPropertyTest do
 
   defp operator_sequence do
     StreamData.list_of(StreamData.member_of(@boolean_operators), min_length: 0, max_length: 2)
+  end
+
+  defp guard_operator_sequence do
+    StreamData.list_of(StreamData.member_of(@guard_boolean_operators),
+      min_length: 0,
+      max_length: 2
+    )
   end
 
   defp render_valid_function(model) do
@@ -561,6 +590,26 @@ defmodule Crap.ComplexityPropertyTest do
       alias #{model.target}, as: #{model.target_alias}
 
       defimpl #{model.protocol_alias}, for: #{model.target_alias} do
+    #{indent(Enum.join(implementations, "\n"), 4)}
+      end
+    end
+    """
+  end
+
+  defp render_nested_local_defimpl(model) do
+    implementations = Enum.map(model.clauses, &render_clause(:def, model, &1))
+
+    """
+    defmodule #{model.outer} do
+      defprotocol #{model.protocol} do
+        def #{model.function}(value)
+      end
+
+      defmodule #{model.target} do
+        defstruct []
+      end
+
+      defimpl #{model.protocol}, for: #{model.target} do
     #{indent(Enum.join(implementations, "\n"), 4)}
       end
     end
@@ -737,7 +786,7 @@ defmodule Crap.ComplexityPropertyTest do
     """
     try do
       :ok
-    #{render_try_else(construct.else_branches)}#{render_try_rescue(construct.rescue_branches, construct.rescue_guard_operators)}#{render_try_catch(construct.catch_branches, construct.catch_guard_operators)}end
+    #{render_try_else(construct.else_branches)}#{render_try_rescue(construct.rescue_branches)}#{render_try_catch(construct.catch_branches, construct.catch_guard_operators)}end
     """
     |> String.trim_trailing()
   end
@@ -854,14 +903,13 @@ defmodule Crap.ComplexityPropertyTest do
     "else\n#{indent(clauses, 2)}\n"
   end
 
-  defp render_try_rescue(0, _guard_operators), do: ""
+  defp render_try_rescue(0), do: ""
 
-  defp render_try_rescue(branches, guard_operators) do
+  defp render_try_rescue(branches) do
     clauses =
       1..branches
       |> Enum.map(fn index ->
-        operators = Enum.at(guard_operators, index - 1, [])
-        "error in RuntimeError#{render_guard(operators)} -> {:rescue, error, #{index}}"
+        "error in RuntimeError -> {:rescue, error, #{index}}"
       end)
       |> Enum.join("\n")
 
@@ -1015,6 +1063,20 @@ defmodule Crap.ComplexityPropertyTest do
     }
   end
 
+  defp expected_nested_local_defimpl_result(model) do
+    %{
+      module:
+        Module.concat([
+          Module.concat([model.outer, model.protocol]),
+          Module.concat([model.outer, model.target])
+        ]),
+      function: :to_string,
+      arity: 1,
+      line: 11,
+      complexity: clauses_complexity(model.clauses)
+    }
+  end
+
   defp clauses_complexity(clauses) do
     Enum.reduce(clauses, 0, fn clause, total ->
       total + 1 + length(clause.guard) + Enum.reduce(clause.body, 0, &(&2 + construct_score(&1)))
@@ -1048,7 +1110,6 @@ defmodule Crap.ComplexityPropertyTest do
 
   defp construct_score(%{kind: :try} = construct) do
     1 + construct.else_branches + construct.rescue_branches + construct.catch_branches +
-      guard_score(construct.rescue_guard_operators, construct.rescue_branches) +
       guard_score(construct.catch_guard_operators, construct.catch_branches)
   end
 
