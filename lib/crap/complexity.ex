@@ -62,13 +62,14 @@ defmodule Crap.Complexity do
 
   def from_file(_path), do: {:error, :invalid_path}
 
-  defp functions(quoted, module), do: functions(quoted, module, MapSet.new(), MapSet.new())
+  defp functions(quoted, module), do: functions(quoted, module, MapSet.new(), MapSet.new(), %{})
 
   defp functions(
          {:defmodule, _meta, [module_ast, [do: body]]},
          current_module,
          _local_protocols,
-         _local_modules
+         _local_modules,
+         _local_aliases
        ) do
     module = module_name(module_ast, current_module)
 
@@ -76,15 +77,28 @@ defmodule Crap.Complexity do
       body,
       module,
       body |> local_protocol_modules(module) |> MapSet.new(),
-      body |> local_module_declarations(module) |> MapSet.new()
+      body |> local_module_declarations(module) |> MapSet.new(),
+      local_alias_declarations(body, module)
     )
   end
 
-  defp functions({:defimpl, _meta, args}, current_module, local_protocols, local_modules) do
+  defp functions(
+         {:defimpl, _meta, args},
+         current_module,
+         local_protocols,
+         local_modules,
+         local_aliases
+       ) do
     case defimpl_parts(args, current_module) do
       {:ok, protocol_ast, for_ast, body} ->
         protocol_ast
-        |> defimpl_module_names(for_ast, current_module, local_protocols, local_modules)
+        |> defimpl_module_names(
+          for_ast,
+          current_module,
+          local_protocols,
+          local_modules,
+          local_aliases
+        )
         |> Enum.flat_map(&functions(body, &1))
 
       :error ->
@@ -92,7 +106,13 @@ defmodule Crap.Complexity do
     end
   end
 
-  defp functions({kind, meta, [head, [do: body]]}, module, _local_protocols, _local_modules)
+  defp functions(
+         {kind, meta, [head, [do: body]]},
+         module,
+         _local_protocols,
+         _local_modules,
+         _local_aliases
+       )
        when kind in @definition_kinds do
     {function, arity, guards} = function_name_arity_and_guards(head)
 
@@ -107,21 +127,31 @@ defmodule Crap.Complexity do
     ]
   end
 
-  defp functions({:__block__, _meta, expressions}, module, local_protocols, local_modules) do
-    Enum.flat_map(expressions, &functions(&1, module, local_protocols, local_modules))
+  defp functions(
+         {:__block__, _meta, expressions},
+         module,
+         local_protocols,
+         local_modules,
+         local_aliases
+       ) do
+    Enum.flat_map(
+      expressions,
+      &functions(&1, module, local_protocols, local_modules, local_aliases)
+    )
   end
 
-  defp functions(list, module, local_protocols, local_modules) when is_list(list) do
-    Enum.flat_map(list, &functions(&1, module, local_protocols, local_modules))
+  defp functions(list, module, local_protocols, local_modules, local_aliases)
+       when is_list(list) do
+    Enum.flat_map(list, &functions(&1, module, local_protocols, local_modules, local_aliases))
   end
 
-  defp functions({branch, _meta, args}, module, local_protocols, local_modules)
+  defp functions({branch, _meta, args}, module, local_protocols, local_modules, local_aliases)
        when branch in [:if, :unless] do
     case List.last(args) do
       branches when is_list(branches) ->
         Enum.flat_map(
           Keyword.values(branches),
-          &functions(&1, module, local_protocols, local_modules)
+          &functions(&1, module, local_protocols, local_modules, local_aliases)
         )
 
       _other ->
@@ -129,7 +159,7 @@ defmodule Crap.Complexity do
     end
   end
 
-  defp functions(_quoted, _module, _local_protocols, _local_modules), do: []
+  defp functions(_quoted, _module, _local_protocols, _local_modules, _local_aliases), do: []
 
   defp malformed_executable_container?(quoted),
     do: malformed_executable_container?(quoted, nil, false, MapSet.new())
@@ -379,6 +409,31 @@ defmodule Crap.Complexity do
 
   defp local_module_declarations(_quoted, _current_module), do: []
 
+  defp local_alias_declarations({:__block__, _meta, expressions}, current_module) do
+    expressions
+    |> Enum.flat_map(&local_alias_declarations(&1, current_module))
+    |> Map.new()
+  end
+
+  defp local_alias_declarations({:alias, _meta, [alias_ast, opts]}, current_module)
+       when is_list(opts) do
+    case Keyword.fetch(opts, :as) do
+      {:ok, {:__aliases__, _meta, [alias_name]}} when is_atom(alias_name) ->
+        [{alias_name, alias_declaration_module_name(alias_ast, current_module)}]
+
+      _other ->
+        []
+    end
+  end
+
+  defp local_alias_declarations(_quoted, _current_module), do: %{}
+
+  defp alias_declaration_module_name(alias_ast, current_module) do
+    parent = if current_module_reference?(alias_ast), do: current_module, else: nil
+
+    module_name(alias_ast, parent)
+  end
+
   defp defimpl_parts([protocol_ast, opts, [do: body]], current_module)
        when is_list(opts) do
     with {:ok, for_ast} <- defimpl_for_ast(opts, current_module, body) do
@@ -469,30 +524,65 @@ defmodule Crap.Complexity do
 
   defp module_concat_part(module, _current_module) when is_atom(module), do: module
 
-  defp protocol_module_name(protocol_ast, current_module, local_protocols)
+  defp protocol_module_name(protocol_ast, current_module, local_protocols, local_aliases)
        when not is_nil(current_module) do
     local_protocol = module_name(protocol_ast, current_module)
 
-    if current_module_reference?(protocol_ast) or MapSet.member?(local_protocols, local_protocol) do
-      local_protocol
-    else
-      module_name(protocol_ast, nil)
+    cond do
+      aliased_module = alias_module_name(protocol_ast, local_aliases) ->
+        aliased_module
+
+      current_module_reference?(protocol_ast) or MapSet.member?(local_protocols, local_protocol) ->
+        local_protocol
+
+      true ->
+        module_name(protocol_ast, nil)
     end
   end
 
-  defp protocol_module_name(protocol_ast, _current_module, _local_protocols),
+  defp protocol_module_name(protocol_ast, _current_module, _local_protocols, _local_aliases),
     do: module_name(protocol_ast, nil)
 
-  defp defimpl_module_names(protocol_ast, for_ast, current_module, local_protocols, local_modules)
+  defp defimpl_module_names(
+         protocol_ast,
+         for_ast,
+         current_module,
+         local_protocols,
+         local_modules,
+         local_aliases
+       )
        when is_list(for_ast) do
     Enum.map(
       for_ast,
-      &defimpl_module_name(protocol_ast, &1, current_module, local_protocols, local_modules)
+      &defimpl_module_name(
+        protocol_ast,
+        &1,
+        current_module,
+        local_protocols,
+        local_modules,
+        local_aliases
+      )
     )
   end
 
-  defp defimpl_module_names(protocol_ast, for_ast, current_module, local_protocols, local_modules) do
-    [defimpl_module_name(protocol_ast, for_ast, current_module, local_protocols, local_modules)]
+  defp defimpl_module_names(
+         protocol_ast,
+         for_ast,
+         current_module,
+         local_protocols,
+         local_modules,
+         local_aliases
+       ) do
+    [
+      defimpl_module_name(
+        protocol_ast,
+        for_ast,
+        current_module,
+        local_protocols,
+        local_modules,
+        local_aliases
+      )
+    ]
   end
 
   defp defimpl_module_name(
@@ -500,33 +590,56 @@ defmodule Crap.Complexity do
          for_module,
          current_module,
          local_protocols,
-         _local_modules
+         _local_modules,
+         local_aliases
        )
        when is_atom(for_module) do
     Module.concat([
-      protocol_module_name(protocol_ast, current_module, local_protocols),
+      protocol_module_name(protocol_ast, current_module, local_protocols, local_aliases),
       for_module
     ])
   end
 
-  defp defimpl_module_name(protocol_ast, for_ast, current_module, local_protocols, local_modules) do
+  defp defimpl_module_name(
+         protocol_ast,
+         for_ast,
+         current_module,
+         local_protocols,
+         local_modules,
+         local_aliases
+       ) do
     Module.concat([
-      protocol_module_name(protocol_ast, current_module, local_protocols),
-      target_module_name(for_ast, current_module, local_modules)
+      protocol_module_name(protocol_ast, current_module, local_protocols, local_aliases),
+      target_module_name(for_ast, current_module, local_modules, local_aliases)
     ])
   end
 
-  defp target_module_name(for_ast, nil, _local_modules), do: module_name(for_ast, nil)
+  defp target_module_name(for_ast, nil, _local_modules, _local_aliases),
+    do: module_name(for_ast, nil)
 
-  defp target_module_name(for_ast, current_module, local_modules) do
+  defp target_module_name(for_ast, current_module, local_modules, local_aliases) do
     local_module = module_name(for_ast, current_module)
 
-    if current_module_reference?(for_ast) or MapSet.member?(local_modules, local_module) do
-      local_module
-    else
-      module_name(for_ast, nil)
+    cond do
+      aliased_module = alias_module_name(for_ast, local_aliases) ->
+        aliased_module
+
+      current_module_reference?(for_ast) or MapSet.member?(local_modules, local_module) ->
+        local_module
+
+      true ->
+        module_name(for_ast, nil)
     end
   end
+
+  defp alias_module_name({:__aliases__, _meta, [alias_name | parts]}, local_aliases) do
+    case Map.fetch(local_aliases, alias_name) do
+      {:ok, module} -> Module.concat([module | parts])
+      :error -> nil
+    end
+  end
+
+  defp alias_module_name(_ast, _local_aliases), do: nil
 
   defp current_module_reference?({:__MODULE__, _meta, nil}), do: true
 

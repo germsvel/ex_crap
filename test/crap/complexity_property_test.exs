@@ -120,12 +120,47 @@ defmodule Crap.ComplexityPropertyTest do
     end
   end
 
+  property "valid generated atom-named modules resolve function result modules" do
+    check all(model <- atom_module_model(), max_runs: 50) do
+      source = render_atom_module(model)
+      expected = expected_atom_module_result(model)
+
+      assert_analysis(source, model, {:ok, [expected]})
+    end
+  end
+
   property "valid generated Module.concat defimpl forms resolve protocol target modules" do
     check all(model <- module_concat_defimpl_model(), max_runs: 50) do
       source = render_module_concat_defimpl(model)
       expected = expected_module_concat_defimpl_result(model)
 
       assert_analysis(source, model, {:ok, [expected]})
+    end
+  end
+
+  property "valid generated nested implicit defimpl forms resolve current module targets" do
+    check all(model <- nested_implicit_defimpl_model(), max_runs: 50) do
+      source = render_nested_implicit_defimpl(model)
+      expected = expected_nested_implicit_defimpl_result(model)
+
+      assert_analysis(source, model, {:ok, [expected]})
+    end
+  end
+
+  property "valid generated nested defimpl forms resolve local aliases" do
+    check all(model <- nested_alias_defimpl_model(), max_runs: 50) do
+      source = render_nested_alias_defimpl(model)
+      expected = expected_nested_alias_defimpl_result(model)
+
+      assert_analysis(source, model, {:ok, [expected]})
+    end
+  end
+
+  property "invalid generated defmodule names are invalid" do
+    check all(model <- invalid_defmodule_model(), max_runs: 50) do
+      source = render_invalid_defmodule(model)
+
+      assert_analysis(source, model, {:error, :invalid_source})
     end
   end
 
@@ -232,12 +267,53 @@ defmodule Crap.ComplexityPropertyTest do
     })
   end
 
+  defp atom_module_model do
+    StreamData.fixed_map(%{
+      module: StreamData.member_of(["GeneratedAtom", "GeneratedAtom.Nested"]),
+      function: function_name(),
+      arity: StreamData.integer(0..3),
+      clauses: clauses([:if, :case, :with, :unless, :cond])
+    })
+  end
+
   defp module_concat_defimpl_model do
     StreamData.fixed_map(%{
       function: StreamData.constant("to_string"),
       arity: StreamData.constant(1),
       clauses: clauses([:if, :case, :with, :unless, :cond])
     })
+  end
+
+  defp nested_implicit_defimpl_model do
+    StreamData.fixed_map(%{
+      protocol: StreamData.member_of(["String.Chars", "Inspect"]),
+      target: StreamData.member_of(["GeneratedImplicit", "GeneratedImplicit.Nested"]),
+      function: StreamData.constant("to_string"),
+      arity: StreamData.constant(1),
+      clauses: clauses([:if, :case, :with, :unless, :cond])
+    })
+  end
+
+  defp nested_alias_defimpl_model do
+    StreamData.fixed_map(%{
+      protocol: StreamData.member_of(["String.Chars", "Inspect"]),
+      protocol_alias: StreamData.constant("ProtocolAlias"),
+      target: StreamData.member_of(["GeneratedAlias.Target", "GeneratedAlias.Other"]),
+      target_alias: StreamData.constant("TargetAlias"),
+      function: StreamData.constant("to_string"),
+      arity: StreamData.constant(1),
+      clauses: clauses([:if, :case, :with, :unless, :cond])
+    })
+  end
+
+  defp invalid_defmodule_model do
+    StreamData.member_of([
+      %{kind: :integer_name},
+      %{kind: :tuple_name},
+      %{kind: :list_name},
+      %{kind: :keyword_name},
+      %{kind: :empty_options}
+    ])
   end
 
   defp module_name do
@@ -447,6 +523,13 @@ defmodule Crap.ComplexityPropertyTest do
     """
   end
 
+  defp render_atom_module(model) do
+    body_model = Map.put(model, :module, model.module)
+    implementations = Enum.map(model.clauses, &render_clause(:def, body_model, &1))
+
+    render_module(~s(:"Elixir.#{model.module}"), implementations)
+  end
+
   defp render_module_concat_defimpl(model) do
     implementations = Enum.map(model.clauses, &render_clause(:def, model, &1))
 
@@ -455,6 +538,53 @@ defmodule Crap.ComplexityPropertyTest do
     #{indent(Enum.join(implementations, "\n"), 2)}
     end
     """
+  end
+
+  defp render_nested_implicit_defimpl(model) do
+    implementations = Enum.map(model.clauses, &render_clause(:def, model, &1))
+
+    """
+    defmodule #{model.target} do
+      defimpl #{model.protocol} do
+    #{indent(Enum.join(implementations, "\n"), 4)}
+      end
+    end
+    """
+  end
+
+  defp render_nested_alias_defimpl(model) do
+    implementations = Enum.map(model.clauses, &render_clause(:def, model, &1))
+
+    """
+    defmodule GeneratedAlias.Scope do
+      alias #{model.protocol}, as: #{model.protocol_alias}
+      alias #{model.target}, as: #{model.target_alias}
+
+      defimpl #{model.protocol_alias}, for: #{model.target_alias} do
+    #{indent(Enum.join(implementations, "\n"), 4)}
+      end
+    end
+    """
+  end
+
+  defp render_invalid_defmodule(%{kind: :integer_name}) do
+    "defmodule 123 do\n  def run, do: :ok\nend"
+  end
+
+  defp render_invalid_defmodule(%{kind: :tuple_name}) do
+    "defmodule {:bad, :name} do\n  def run, do: :ok\nend"
+  end
+
+  defp render_invalid_defmodule(%{kind: :list_name}) do
+    "defmodule [:bad, :name] do\n  def run, do: :ok\nend"
+  end
+
+  defp render_invalid_defmodule(%{kind: :keyword_name}) do
+    "defmodule [as: BadName] do\n  def run, do: :ok\nend"
+  end
+
+  defp render_invalid_defmodule(%{kind: :empty_options}) do
+    "defmodule [] do\n  def run, do: :ok\nend"
   end
 
   defp render_malformed_definition(%{definition_kind: kind, with_body?: false}) do
@@ -845,12 +975,42 @@ defmodule Crap.ComplexityPropertyTest do
     }
   end
 
+  defp expected_atom_module_result(model) do
+    %{
+      module: Module.concat([model.module]),
+      function: String.to_atom(model.function),
+      arity: model.arity,
+      line: 2,
+      complexity: clauses_complexity(model.clauses)
+    }
+  end
+
   defp expected_module_concat_defimpl_result(model) do
     %{
       module: String.Chars.Generated.Target,
       function: :to_string,
       arity: 1,
       line: 2,
+      complexity: clauses_complexity(model.clauses)
+    }
+  end
+
+  defp expected_nested_implicit_defimpl_result(model) do
+    %{
+      module: Module.concat([Module.concat([model.protocol]), Module.concat([model.target])]),
+      function: :to_string,
+      arity: 1,
+      line: 3,
+      complexity: clauses_complexity(model.clauses)
+    }
+  end
+
+  defp expected_nested_alias_defimpl_result(model) do
+    %{
+      module: Module.concat([Module.concat([model.protocol]), Module.concat([model.target])]),
+      function: :to_string,
+      arity: 1,
+      line: 6,
       complexity: clauses_complexity(model.clauses)
     }
   end

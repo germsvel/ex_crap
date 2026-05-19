@@ -722,6 +722,29 @@ defmodule Crap.ComplexityTest do
               ]} = Crap.Complexity.from_string(source)
     end
 
+    test "resolves local alias declarations in nested explicit defimpl blocks" do
+      source = """
+      defmodule Outer do
+        alias String.Chars, as: ProtocolAlias
+        alias Example.One, as: TargetAlias
+
+        defimpl ProtocolAlias, for: TargetAlias do
+          def to_string(_), do: "ok"
+        end
+      end
+      """
+
+      assert {:ok,
+              [
+                %{
+                  module: String.Chars.Example.One,
+                  function: :to_string,
+                  arity: 1,
+                  complexity: 1
+                }
+              ]} = Crap.Complexity.from_string(source)
+    end
+
     test "allows default-argument function heads before implementation clauses" do
       source = ~S"""
       defmodule Example do
