@@ -449,6 +449,19 @@ defmodule Crap.ComplexityTest do
                Crap.Complexity.from_string(nested_source)
     end
 
+    test "accepts Module.concat based module names" do
+      source = """
+      defmodule Outer do
+        defmodule Module.concat(__MODULE__, Nested) do
+          def run, do: :ok
+        end
+      end
+      """
+
+      assert {:ok, [%{module: Outer.Nested, function: :run, arity: 0, complexity: 1}]} =
+               Crap.Complexity.from_string(source)
+    end
+
     test "ignores common declarations and helper constructs safely" do
       source = """
       defmodule Example.Helpers do
@@ -542,7 +555,7 @@ defmodule Crap.ComplexityTest do
                   arity: 1,
                   complexity: 1
                 }
-               ]} = Crap.Complexity.from_string(source)
+              ]} = Crap.Complexity.from_string(source)
     end
 
     test "preserves explicit __MODULE__ context in nested defimpl Module.concat forms" do

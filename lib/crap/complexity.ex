@@ -273,7 +273,9 @@ defmodule Crap.Complexity do
        do: false
 
   defp module_name_ast?(module_ast) when is_atom(module_ast), do: valid_module_atom?(module_ast)
-  defp module_name_ast?(module_ast), do: module_alias?(module_ast)
+
+  defp module_name_ast?(module_ast),
+    do: module_alias?(module_ast) or module_concat_ast?(module_ast)
 
   defp module_alias?({:__aliases__, _meta, parts}) when is_list(parts) do
     Enum.all?(parts, &module_alias_part?/1)

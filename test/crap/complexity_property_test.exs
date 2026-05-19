@@ -14,6 +14,36 @@ defmodule Crap.ComplexityPropertyTest do
     end
   end
 
+  property "valid generated definitions score unless and cond constructs" do
+    check all(model <- valid_function_model(body_constructs: [:unless, :cond]), max_runs: 50) do
+      source = render_valid_function(model)
+      expected = expected_result(model)
+
+      assert_analysis(source, model, {:ok, [expected]})
+    end
+  end
+
+  property "valid generated definitions score try for receive and anonymous function constructs" do
+    check all(
+            model <- valid_function_model(body_constructs: [:try, :for, :receive, :fn]),
+            max_runs: 50
+          ) do
+      source = render_valid_function(model)
+      expected = expected_result(model)
+
+      assert_analysis(source, model, {:ok, [expected]})
+    end
+  end
+
+  property "valid generated definitions score shallow nested body constructs" do
+    check all(model <- nested_function_model(), max_runs: 50) do
+      source = render_valid_function(model)
+      expected = expected_result(model)
+
+      assert_analysis(source, model, {:ok, [expected]})
+    end
+  end
+
   property "matching bodyless declaration heads are valid and do not add result rows" do
     check all(model <- valid_declaration_model(), max_runs: 50) do
       source = render_valid_function(model)
@@ -39,6 +69,22 @@ defmodule Crap.ComplexityPropertyTest do
     end
   end
 
+  property "malformed supported definition heads are invalid" do
+    check all(model <- malformed_definition_model(), max_runs: 50) do
+      source = render_malformed_definition(model)
+
+      assert_analysis(source, model, {:error, :invalid_source})
+    end
+  end
+
+  property "invalid generated defimpl shapes are invalid" do
+    check all(model <- invalid_defimpl_model(), max_runs: 50) do
+      source = render_invalid_defimpl(model)
+
+      assert_analysis(source, model, {:error, :invalid_source})
+    end
+  end
+
   property "valid non-analyzable source returns no results" do
     check all(model <- non_analyzable_model(), max_runs: 50) do
       source = render_non_analyzable(model)
@@ -47,14 +93,63 @@ defmodule Crap.ComplexityPropertyTest do
     end
   end
 
-  defp valid_function_model do
+  property "valid generated defimpl blocks return expected protocol target rows" do
+    check all(model <- defimpl_model(), max_runs: 50) do
+      source = render_defimpl(model)
+      expected = expected_defimpl_results(model)
+
+      assert_analysis(source, model, {:ok, expected})
+    end
+  end
+
+  property "valid generated multi-target defimpl blocks return one row per target" do
+    check all(model <- multi_target_defimpl_model(), max_runs: 50) do
+      source = render_defimpl(model)
+      expected = expected_defimpl_results(model)
+
+      assert_analysis(source, model, {:ok, expected})
+    end
+  end
+
+  property "valid generated nested modules resolve function result modules" do
+    check all(model <- nested_module_model(), max_runs: 50) do
+      source = render_nested_module(model)
+      expected = expected_nested_module_result(model)
+
+      assert_analysis(source, model, {:ok, [expected]})
+    end
+  end
+
+  property "valid generated Module.concat defimpl forms resolve protocol target modules" do
+    check all(model <- module_concat_defimpl_model(), max_runs: 50) do
+      source = render_module_concat_defimpl(model)
+      expected = expected_module_concat_defimpl_result(model)
+
+      assert_analysis(source, model, {:ok, [expected]})
+    end
+  end
+
+  defp valid_function_model, do: valid_function_model(body_constructs: [:if, :case, :with])
+
+  defp valid_function_model(opts) do
+    body_constructs = Keyword.fetch!(opts, :body_constructs)
+
     StreamData.fixed_map(%{
       module: module_name(),
       function: function_name(),
       definition_kind: StreamData.member_of(@definition_kinds),
       arity: StreamData.integer(0..3),
-      clauses: clauses()
+      clauses: clauses(body_constructs)
     })
+  end
+
+  defp nested_function_model do
+    StreamData.map(
+      valid_function_model(body_constructs: [:nested_if_case, :nested_with_cond]),
+      fn model ->
+        %{model | clauses: Enum.take(model.clauses, 1)}
+      end
+    )
   end
 
   defp valid_declaration_model do
@@ -80,9 +175,26 @@ defmodule Crap.ComplexityPropertyTest do
         declaration_kind: StreamData.constant(declaration_kind),
         implementation_kind: StreamData.member_of(implementation_kinds),
         arity: StreamData.integer(0..3),
-        clauses: clauses()
+        clauses: clauses([:if, :case, :with])
       })
     end)
+  end
+
+  defp malformed_definition_model do
+    StreamData.fixed_map(%{
+      definition_kind: StreamData.member_of(@definition_kinds),
+      with_body?: StreamData.boolean()
+    })
+  end
+
+  defp invalid_defimpl_model do
+    StreamData.member_of([
+      %{kind: :invalid_protocol_name},
+      %{kind: :invalid_target_name},
+      %{kind: :top_level_empty_options},
+      %{kind: :missing_top_level_target},
+      %{kind: :bodyless_definition}
+    ])
   end
 
   defp non_analyzable_model do
@@ -93,6 +205,41 @@ defmodule Crap.ComplexityPropertyTest do
     ])
   end
 
+  defp defimpl_model do
+    StreamData.fixed_map(%{
+      protocol: StreamData.member_of(["String.Chars", "Inspect", "Generated.Protocol"]),
+      target: StreamData.member_of(["Generated.Target", "Generated.Other"]),
+      keyword_form?: StreamData.boolean(),
+      function: StreamData.constant("to_string"),
+      arity: StreamData.constant(1),
+      clauses: clauses([:if, :case, :with, :unless, :cond])
+    })
+  end
+
+  defp multi_target_defimpl_model do
+    StreamData.map(defimpl_model(), fn model ->
+      Map.put(model, :targets, ["Generated.One", "Generated.Two"])
+    end)
+  end
+
+  defp nested_module_model do
+    StreamData.fixed_map(%{
+      outer: StreamData.constant("GeneratedOuter"),
+      inner_form: StreamData.member_of([:alias, :module_alias, :module_concat]),
+      function: function_name(),
+      arity: StreamData.integer(0..3),
+      clauses: clauses([:if, :case, :with, :unless, :cond])
+    })
+  end
+
+  defp module_concat_defimpl_model do
+    StreamData.fixed_map(%{
+      function: StreamData.constant("to_string"),
+      arity: StreamData.constant(1),
+      clauses: clauses([:if, :case, :with, :unless, :cond])
+    })
+  end
+
   defp module_name do
     StreamData.member_of(["GeneratedExample", "GeneratedExample.One", "GeneratedExample.Two"])
   end
@@ -101,34 +248,112 @@ defmodule Crap.ComplexityPropertyTest do
     StreamData.member_of(["run", "classify", "build", "visible?"])
   end
 
-  defp clauses do
-    StreamData.list_of(clause(), min_length: 1, max_length: 3)
+  defp clauses(body_constructs) do
+    StreamData.list_of(clause(body_constructs), min_length: 1, max_length: 3)
   end
 
-  defp clause do
+  defp clause(body_constructs) do
     StreamData.fixed_map(%{
       guard: operator_sequence(),
-      body: StreamData.list_of(body_construct(), min_length: 0, max_length: 3)
+      body: StreamData.list_of(body_construct(body_constructs), min_length: 0, max_length: 3)
     })
   end
 
-  defp body_construct do
-    StreamData.one_of([
-      StreamData.map(operator_sequence(), &%{kind: :if, boolean_operators: &1}),
-      StreamData.fixed_map(%{
-        kind: StreamData.constant(:case),
-        branches: StreamData.integer(1..3),
-        clause_guard_operators:
-          StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3)
-      }),
-      StreamData.fixed_map(%{
-        kind: StreamData.constant(:with),
-        generators: StreamData.integer(1..3),
-        else_branches: StreamData.integer(0..3),
-        else_guard_operators:
-          StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3)
-      })
-    ])
+  defp body_construct(kinds) do
+    kinds
+    |> Enum.map(&construct_generator/1)
+    |> StreamData.one_of()
+  end
+
+  defp construct_generator(:if),
+    do: StreamData.map(operator_sequence(), &%{kind: :if, boolean_operators: &1})
+
+  defp construct_generator(:unless),
+    do: StreamData.map(operator_sequence(), &%{kind: :unless, boolean_operators: &1})
+
+  defp construct_generator(:case) do
+    StreamData.fixed_map(%{
+      kind: StreamData.constant(:case),
+      branches: StreamData.integer(1..3),
+      clause_guard_operators:
+        StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3)
+    })
+  end
+
+  defp construct_generator(:cond) do
+    StreamData.fixed_map(%{
+      kind: StreamData.constant(:cond),
+      branches: StreamData.integer(1..3),
+      clause_guard_operators:
+        StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3)
+    })
+  end
+
+  defp construct_generator(:with) do
+    StreamData.fixed_map(%{
+      kind: StreamData.constant(:with),
+      generators: StreamData.integer(1..3),
+      else_branches: StreamData.integer(0..3),
+      else_guard_operators: StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3)
+    })
+  end
+
+  defp construct_generator(:try) do
+    StreamData.fixed_map(%{
+      kind: StreamData.constant(:try),
+      else_branches: StreamData.integer(0..3),
+      rescue_branches: StreamData.integer(0..3),
+      rescue_guard_operators:
+        StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3),
+      catch_branches: StreamData.integer(0..3),
+      catch_guard_operators: StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3)
+    })
+  end
+
+  defp construct_generator(:for) do
+    StreamData.fixed_map(%{
+      kind: StreamData.constant(:for),
+      generators: StreamData.integer(1..3),
+      filters: StreamData.integer(0..3),
+      reduce?: StreamData.boolean()
+    })
+  end
+
+  defp construct_generator(:receive) do
+    StreamData.fixed_map(%{
+      kind: StreamData.constant(:receive),
+      branches: StreamData.integer(1..3),
+      clause_guard_operators:
+        StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3),
+      after?: StreamData.boolean()
+    })
+  end
+
+  defp construct_generator(:fn) do
+    StreamData.fixed_map(%{
+      kind: StreamData.constant(:fn),
+      clauses: StreamData.integer(1..3),
+      clause_guard_operators:
+        StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3)
+    })
+  end
+
+  defp construct_generator(:nested_if_case) do
+    StreamData.fixed_map(%{
+      kind: StreamData.constant(:nested_if_case),
+      if_operators: operator_sequence(),
+      case_branches: StreamData.integer(1..3),
+      case_guard_operators: StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3)
+    })
+  end
+
+  defp construct_generator(:nested_with_cond) do
+    StreamData.fixed_map(%{
+      kind: StreamData.constant(:nested_with_cond),
+      with_generators: StreamData.integer(1..3),
+      cond_branches: StreamData.integer(1..3),
+      cond_guard_operators: StreamData.list_of(operator_sequence(), min_length: 0, max_length: 3)
+    })
   end
 
   defp operator_sequence do
@@ -173,6 +398,91 @@ defmodule Crap.ComplexityPropertyTest do
 
   defp render_non_analyzable(%{kind: :callback_module, module: module}) do
     render_module(module, ["@callback call(term()) :: term()"])
+  end
+
+  defp render_defimpl(%{targets: targets} = model) do
+    target_source = "[#{Enum.join(targets, ", ")}]"
+    render_defimpl_body(model, target_source)
+  end
+
+  defp render_defimpl(model) do
+    render_defimpl_body(model, model.target)
+  end
+
+  defp render_defimpl_body(%{keyword_form?: true} = model, target_source) do
+    clause = List.first(model.clauses)
+
+    """
+    defimpl #{model.protocol}, for: #{target_source}, do: def(#{model.function}(#{arguments(model.arity)})#{render_guard(clause.guard)}, do: :ok)
+    """
+  end
+
+  defp render_defimpl_body(model, target_source) do
+    implementations = Enum.map(model.clauses, &render_clause(:def, model, &1))
+
+    """
+    defimpl #{model.protocol}, for: #{target_source} do
+    #{indent(Enum.join(implementations, "\n"), 2)}
+    end
+    """
+  end
+
+  defp render_nested_module(model) do
+    inner_source =
+      case model.inner_form do
+        :alias -> "GeneratedInner"
+        :module_alias -> "__MODULE__.GeneratedInner"
+        :module_concat -> "Module.concat(__MODULE__, GeneratedInner)"
+      end
+
+    body_model = Map.put(model, :module, "GeneratedOuter.GeneratedInner")
+    implementations = Enum.map(model.clauses, &render_clause(:def, body_model, &1))
+
+    """
+    defmodule #{model.outer} do
+      defmodule #{inner_source} do
+    #{indent(Enum.join(implementations, "\n"), 4)}
+      end
+    end
+    """
+  end
+
+  defp render_module_concat_defimpl(model) do
+    implementations = Enum.map(model.clauses, &render_clause(:def, model, &1))
+
+    """
+    defimpl Module.concat(String, Chars), for: Module.concat(Generated, Target) do
+    #{indent(Enum.join(implementations, "\n"), 2)}
+    end
+    """
+  end
+
+  defp render_malformed_definition(%{definition_kind: kind, with_body?: false}) do
+    render_module("GeneratedBad", ["#{kind} 123"])
+  end
+
+  defp render_malformed_definition(%{definition_kind: kind, with_body?: true}) do
+    render_module("GeneratedBad", ["#{kind} 123 do\n  :ok\nend"])
+  end
+
+  defp render_invalid_defimpl(%{kind: :invalid_protocol_name}) do
+    "defimpl 123, for: Generated.Target do\n  def to_string(_), do: :ok\nend"
+  end
+
+  defp render_invalid_defimpl(%{kind: :invalid_target_name}) do
+    "defimpl String.Chars, for: 123 do\n  def to_string(_), do: :ok\nend"
+  end
+
+  defp render_invalid_defimpl(%{kind: :top_level_empty_options}) do
+    "defimpl String.Chars, [] do\n  def to_string(_), do: :ok\nend"
+  end
+
+  defp render_invalid_defimpl(%{kind: :missing_top_level_target}) do
+    "defimpl String.Chars do\n  def to_string(_), do: :ok\nend"
+  end
+
+  defp render_invalid_defimpl(%{kind: :bodyless_definition}) do
+    "defimpl String.Chars, for: Generated.Target do\n  def to_string(value)\nend"
   end
 
   defp render_module(module, lines) do
@@ -224,6 +534,17 @@ defmodule Crap.ComplexityPropertyTest do
     |> String.trim_trailing()
   end
 
+  defp render_construct(%{kind: :unless, boolean_operators: operators}) do
+    """
+    unless #{boolean_chain(operators)} do
+      :ok
+    else
+      :error
+    end
+    """
+    |> String.trim_trailing()
+  end
+
   defp render_construct(%{
          kind: :case,
          branches: branches,
@@ -246,6 +567,27 @@ defmodule Crap.ComplexityPropertyTest do
     |> String.trim_trailing()
   end
 
+  defp render_construct(%{
+         kind: :cond,
+         branches: branches,
+         clause_guard_operators: guard_operators
+       }) do
+    clauses =
+      1..branches
+      |> Enum.map(fn index ->
+        operators = Enum.at(guard_operators, index - 1, [])
+        "#{boolean_chain(operators)} -> :branch_#{index}"
+      end)
+      |> Enum.join("\n")
+
+    """
+    cond do
+    #{indent(clauses, 2)}
+    end
+    """
+    |> String.trim_trailing()
+  end
+
   defp render_construct(%{kind: :with} = construct) do
     generators =
       1..construct.generators
@@ -259,6 +601,161 @@ defmodule Crap.ComplexityPropertyTest do
     #{else_block}end
     """
     |> String.trim_trailing()
+  end
+
+  defp render_construct(%{kind: :try} = construct) do
+    """
+    try do
+      :ok
+    #{render_try_else(construct.else_branches)}#{render_try_rescue(construct.rescue_branches, construct.rescue_guard_operators)}#{render_try_catch(construct.catch_branches, construct.catch_guard_operators)}end
+    """
+    |> String.trim_trailing()
+  end
+
+  defp render_construct(%{kind: :for} = construct) do
+    qualifiers =
+      Enum.map_join(1..construct.generators, ", ", fn index -> "item_#{index} <- items" end)
+
+    filters =
+      if construct.filters == 0 do
+        ""
+      else
+        1..construct.filters
+        |> Enum.map(fn index -> "filter_#{index}" end)
+        |> Enum.join(", ")
+      end
+
+    qualifier_source = Enum.reject([qualifiers, filters], &(&1 == "")) |> Enum.join(", ")
+
+    if construct.reduce? do
+      """
+      for #{qualifier_source}, reduce: [] do
+        acc -> acc
+      end
+      """
+    else
+      """
+      for #{qualifier_source}, do: :ok
+      """
+    end
+    |> String.trim_trailing()
+  end
+
+  defp render_construct(%{kind: :receive} = construct) do
+    clauses =
+      1..construct.branches
+      |> Enum.map(fn index ->
+        operators = Enum.at(construct.clause_guard_operators, index - 1, [])
+        "{:message, #{index}}#{render_guard(operators)} -> :message_#{index}"
+      end)
+      |> Enum.join("\n")
+
+    """
+    receive do
+    #{indent(clauses, 2)}
+    #{render_receive_after(construct.after?)}end
+    """
+    |> String.trim_trailing()
+  end
+
+  defp render_construct(%{kind: :fn} = construct) do
+    clauses =
+      1..construct.clauses
+      |> Enum.map(fn index ->
+        operators = Enum.at(construct.clause_guard_operators, index - 1, [])
+        "#{index}#{render_guard(operators)} -> :clause_#{index}"
+      end)
+      |> Enum.join("\n")
+
+    """
+    fn
+    #{indent(clauses, 2)}
+    end
+    """
+    |> String.trim_trailing()
+  end
+
+  defp render_construct(%{kind: :nested_if_case} = construct) do
+    clauses =
+      1..construct.case_branches
+      |> Enum.map(fn index ->
+        operators = Enum.at(construct.case_guard_operators, index - 1, [])
+        "#{index}#{render_guard(operators)} -> :branch_#{index}"
+      end)
+      |> Enum.join("\n")
+
+    """
+    if #{boolean_chain(construct.if_operators)} do
+      case value do
+    #{indent(clauses, 4)}
+      end
+    else
+      :error
+    end
+    """
+    |> String.trim_trailing()
+  end
+
+  defp render_construct(%{kind: :nested_with_cond} = construct) do
+    generators = Enum.map_join(1..construct.with_generators, ",\n", &":ok <- nested_step_#{&1}")
+
+    clauses =
+      1..construct.cond_branches
+      |> Enum.map(fn index ->
+        operators = Enum.at(construct.cond_guard_operators, index - 1, [])
+        "#{boolean_chain(operators)} -> :branch_#{index}"
+      end)
+      |> Enum.join("\n")
+
+    """
+    with #{generators} do
+      cond do
+    #{indent(clauses, 4)}
+      end
+    end
+    """
+    |> String.trim_trailing()
+  end
+
+  defp render_try_else(0), do: ""
+
+  defp render_try_else(branches) do
+    clauses = Enum.map_join(1..branches, "\n", &":ok -> :else_#{&1}")
+    "else\n#{indent(clauses, 2)}\n"
+  end
+
+  defp render_try_rescue(0, _guard_operators), do: ""
+
+  defp render_try_rescue(branches, guard_operators) do
+    clauses =
+      1..branches
+      |> Enum.map(fn index ->
+        operators = Enum.at(guard_operators, index - 1, [])
+        "error in RuntimeError#{render_guard(operators)} -> {:rescue, error, #{index}}"
+      end)
+      |> Enum.join("\n")
+
+    "rescue\n#{indent(clauses, 2)}\n"
+  end
+
+  defp render_try_catch(0, _guard_operators), do: ""
+
+  defp render_try_catch(branches, guard_operators) do
+    clauses =
+      1..branches
+      |> Enum.map(fn index ->
+        operators = Enum.at(guard_operators, index - 1, [])
+        "kind, reason#{render_guard(operators)} -> {:catch, kind, reason, #{index}}"
+      end)
+      |> Enum.join("\n")
+
+    "catch\n#{indent(clauses, 2)}\n"
+  end
+
+  defp render_receive_after(false), do: ""
+
+  defp render_receive_after(true) do
+    "after\n  0 -> :timeout\n"
   end
 
   defp render_with_else(0, _guard_operators), do: ""
@@ -308,36 +805,122 @@ defmodule Crap.ComplexityPropertyTest do
   defp expected_line(%{declaration?: true}), do: 3
   defp expected_line(_model), do: 2
 
-  defp expected_complexity(model) do
-    Enum.reduce(model.clauses, 0, fn clause, total ->
-      total + 1 + length(clause.guard) +
-        Enum.reduce(clause.body, 0, &(&2 + construct_score(&1)))
+  defp expected_complexity(model), do: clauses_complexity(model.clauses)
+
+  defp expected_defimpl_results(%{targets: targets} = model) do
+    targets
+    |> Enum.map(&expected_defimpl_result(model, &1))
+    |> Enum.sort_by(&{inspect(&1.module), &1.line || 0, &1.function, &1.arity})
+  end
+
+  defp expected_defimpl_results(model), do: [expected_defimpl_result(model, model.target)]
+
+  defp expected_defimpl_result(model, target) do
+    clauses = if model.keyword_form?, do: Enum.take(model.clauses, 1), else: model.clauses
+
+    complexity =
+      if model.keyword_form? do
+        clause = List.first(clauses)
+        1 + length(clause.guard)
+      else
+        clauses_complexity(clauses)
+      end
+
+    %{
+      module: Module.concat([Module.concat([model.protocol]), Module.concat([target])]),
+      function: String.to_atom(model.function),
+      arity: model.arity,
+      line: if(model.keyword_form?, do: 1, else: 2),
+      complexity: complexity
+    }
+  end
+
+  defp expected_nested_module_result(model) do
+    %{
+      module: GeneratedOuter.GeneratedInner,
+      function: String.to_atom(model.function),
+      arity: model.arity,
+      line: 3,
+      complexity: clauses_complexity(model.clauses)
+    }
+  end
+
+  defp expected_module_concat_defimpl_result(model) do
+    %{
+      module: String.Chars.Generated.Target,
+      function: :to_string,
+      arity: 1,
+      line: 2,
+      complexity: clauses_complexity(model.clauses)
+    }
+  end
+
+  defp clauses_complexity(clauses) do
+    Enum.reduce(clauses, 0, fn clause, total ->
+      total + 1 + length(clause.guard) + Enum.reduce(clause.body, 0, &(&2 + construct_score(&1)))
     end)
   end
 
   defp construct_score(%{kind: :if, boolean_operators: operators}), do: 1 + length(operators)
+
+  defp construct_score(%{kind: :unless, boolean_operators: operators}), do: 1 + length(operators)
 
   defp construct_score(%{
          kind: :case,
          branches: branches,
          clause_guard_operators: guard_operators
        }) do
-    rendered_guard_score =
-      guard_operators
-      |> Enum.take(branches)
-      |> Enum.reduce(0, &(&2 + length(&1)))
+    branches + guard_score(guard_operators, branches)
+  end
 
-    branches + rendered_guard_score
+  defp construct_score(%{
+         kind: :cond,
+         branches: branches,
+         clause_guard_operators: guard_operators
+       }) do
+    branches + guard_score(guard_operators, branches)
   end
 
   defp construct_score(%{kind: :with} = construct) do
-    rendered_guard_score =
-      construct.else_guard_operators
-      |> Enum.take(construct.else_branches)
-      |> Enum.reduce(0, &(&2 + length(&1)))
-
     construct.generators + construct.else_branches +
-      rendered_guard_score
+      guard_score(construct.else_guard_operators, construct.else_branches)
+  end
+
+  defp construct_score(%{kind: :try} = construct) do
+    1 + construct.else_branches + construct.rescue_branches + construct.catch_branches +
+      guard_score(construct.rescue_guard_operators, construct.rescue_branches) +
+      guard_score(construct.catch_guard_operators, construct.catch_branches)
+  end
+
+  defp construct_score(%{kind: :for} = construct) do
+    construct.generators + construct.filters
+  end
+
+  defp construct_score(%{kind: :receive} = construct) do
+    after_score = if construct.after?, do: 1, else: 0
+
+    construct.branches + after_score +
+      guard_score(construct.clause_guard_operators, construct.branches)
+  end
+
+  defp construct_score(%{kind: :fn} = construct) do
+    construct.clauses + guard_score(construct.clause_guard_operators, construct.clauses)
+  end
+
+  defp construct_score(%{kind: :nested_if_case} = construct) do
+    1 + length(construct.if_operators) + construct.case_branches +
+      guard_score(construct.case_guard_operators, construct.case_branches)
+  end
+
+  defp construct_score(%{kind: :nested_with_cond} = construct) do
+    construct.with_generators + construct.cond_branches +
+      guard_score(construct.cond_guard_operators, construct.cond_branches)
+  end
+
+  defp guard_score(guard_operators, rendered_clause_count) do
+    guard_operators
+    |> Enum.take(rendered_clause_count)
+    |> Enum.reduce(0, &(&2 + length(&1)))
   end
 
   defp indent(text, spaces) do
