@@ -427,6 +427,24 @@ defmodule Crap.Complexity do
     end
   end
 
+  defp local_alias_declarations(
+         {:alias, _meta, [{{:., _dot_meta, [base_ast, :{}]}, _group_meta, grouped_aliases}]},
+         current_module
+       )
+       when is_list(grouped_aliases) do
+    base_module = alias_declaration_module_name(base_ast, current_module)
+
+    Enum.reduce(grouped_aliases, %{}, fn alias_ast, aliases ->
+      case alias_name(alias_ast, []) do
+        {:ok, alias_name} ->
+          Map.put(aliases, alias_name, Module.concat([base_module, module_name(alias_ast, nil)]))
+
+        :error ->
+          aliases
+      end
+    end)
+  end
+
   defp local_alias_declarations({:alias, _meta, [alias_ast]}, current_module) do
     case alias_name(alias_ast, []) do
       {:ok, alias_name} ->

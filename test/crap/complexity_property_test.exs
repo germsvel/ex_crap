@@ -6,6 +6,87 @@ defmodule Crap.ComplexityPropertyTest do
   @boolean_operators [:and, :or, :&&, :||]
   @guard_boolean_operators [:and, :or]
 
+  test "nested defimpl resolves targets from grouped aliases" do
+    source = """
+    defmodule GeneratedGroupedAlias.Scope do
+      alias Example.{One, Two}
+
+      defimpl String.Chars, for: One do
+        def to_string(value), do: inspect(value)
+      end
+    end
+    """
+
+    assert Crap.Complexity.from_string(source) ==
+             {:ok,
+              [
+                %{
+                  module: String.Chars.Example.One,
+                  function: :to_string,
+                  arity: 1,
+                  line: 5,
+                  complexity: 1
+                }
+              ]}
+  end
+
+  property "valid generated function bodies cover boolean operators and keep guards guard-valid" do
+    check all(operator <- StreamData.member_of(@boolean_operators), max_runs: 20) do
+      model = %{
+        module: "GeneratedBooleanBody",
+        function: "run",
+        definition_kind: :def,
+        arity: 0,
+        clauses: [
+          %{
+            guard: [:and],
+            body: [%{kind: :if, boolean_operators: [operator]}]
+          }
+        ]
+      }
+
+      source = render_valid_function(model)
+      expected = expected_result(model)
+
+      assert_analysis(source, model, {:ok, [expected]})
+    end
+  end
+
+  property "valid generated try rescue clauses use compiler-valid rescue shapes and catch guards" do
+    check all(
+            rescue_branches <- StreamData.integer(1..3),
+            catch_guard_operators <-
+              StreamData.list_of(guard_operator_sequence(), min_length: 1, max_length: 3),
+            max_runs: 20
+          ) do
+      model = %{
+        module: "GeneratedTryGuards",
+        function: "run",
+        definition_kind: :def,
+        arity: 0,
+        clauses: [
+          %{
+            guard: [],
+            body: [
+              %{
+                kind: :try,
+                else_branches: 0,
+                rescue_branches: rescue_branches,
+                catch_branches: length(catch_guard_operators),
+                catch_guard_operators: catch_guard_operators
+              }
+            ]
+          }
+        ]
+      }
+
+      source = render_valid_function(model)
+      expected = expected_result(model)
+
+      assert_analysis(source, model, {:ok, [expected]})
+    end
+  end
+
   property "valid generated definitions return one row with model-derived complexity" do
     check all(model <- valid_function_model(), max_runs: 50) do
       source = render_valid_function(model)
@@ -152,6 +233,15 @@ defmodule Crap.ComplexityPropertyTest do
     check all(model <- nested_alias_defimpl_model(), max_runs: 50) do
       source = render_nested_alias_defimpl(model)
       expected = expected_nested_alias_defimpl_result(model)
+
+      assert_analysis(source, model, {:ok, [expected]})
+    end
+  end
+
+  property "valid generated nested defimpl forms resolve grouped local aliases" do
+    check all(model <- nested_grouped_alias_defimpl_model(), max_runs: 50) do
+      source = render_nested_grouped_alias_defimpl(model)
+      expected = expected_nested_grouped_alias_defimpl_result(model)
 
       assert_analysis(source, model, {:ok, [expected]})
     end
@@ -310,6 +400,16 @@ defmodule Crap.ComplexityPropertyTest do
       protocol_alias: StreamData.constant("ProtocolAlias"),
       target: StreamData.member_of(["GeneratedAlias.Target", "GeneratedAlias.Other"]),
       target_alias: StreamData.constant("TargetAlias"),
+      function: StreamData.constant("to_string"),
+      arity: StreamData.constant(1),
+      clauses: clauses([:if, :case, :with, :unless, :cond])
+    })
+  end
+
+  defp nested_grouped_alias_defimpl_model do
+    StreamData.fixed_map(%{
+      protocol: StreamData.member_of(["String.Chars", "Inspect"]),
+      target_alias: StreamData.member_of(["One", "Two", "One.Nested"]),
       function: StreamData.constant("to_string"),
       arity: StreamData.constant(1),
       clauses: clauses([:if, :case, :with, :unless, :cond])
@@ -590,6 +690,20 @@ defmodule Crap.ComplexityPropertyTest do
       alias #{model.target}, as: #{model.target_alias}
 
       defimpl #{model.protocol_alias}, for: #{model.target_alias} do
+    #{indent(Enum.join(implementations, "\n"), 4)}
+      end
+    end
+    """
+  end
+
+  defp render_nested_grouped_alias_defimpl(model) do
+    implementations = Enum.map(model.clauses, &render_clause(:def, model, &1))
+
+    """
+    defmodule GeneratedGroupedAlias.Scope do
+      alias Example.{One, Two}
+
+      defimpl #{model.protocol}, for: #{model.target_alias} do
     #{indent(Enum.join(implementations, "\n"), 4)}
       end
     end
@@ -1059,6 +1173,20 @@ defmodule Crap.ComplexityPropertyTest do
       function: :to_string,
       arity: 1,
       line: 6,
+      complexity: clauses_complexity(model.clauses)
+    }
+  end
+
+  defp expected_nested_grouped_alias_defimpl_result(model) do
+    %{
+      module:
+        Module.concat([
+          Module.concat([model.protocol]),
+          Module.concat(["Example", model.target_alias])
+        ]),
+      function: :to_string,
+      arity: 1,
+      line: 5,
       complexity: clauses_complexity(model.clauses)
     }
   end
