@@ -86,6 +86,25 @@ defmodule CrapTest do
     test "still returns invalid_source for invalid source" do
       assert Crap.analyze_string("defmodule", %{}) == {:error, :invalid_source}
     end
+
+    test "rejects non-map coverage input" do
+      assert Crap.analyze_string("defmodule Example do\n  def ok, do: :ok\nend\n", []) ==
+               {:error, :invalid_coverage_map}
+    end
+
+    test "marks functions with invalid coverage values as errors" do
+      source = "defmodule Example do\n  def ok, do: :ok\nend\n"
+
+      assert {:ok,
+              [
+                %{
+                  module: Example,
+                  function: :ok,
+                  arity: 0,
+                  status: {:error, :invalid_coverage}
+                }
+              ]} = Crap.analyze_string(source, %{{Example, :ok, 0} => 101})
+    end
   end
 
   describe "analyze_file/2" do
@@ -122,6 +141,12 @@ defmodule CrapTest do
       after
         File.rm(path)
       end
+    end
+
+    test "rejects non-map coverage input" do
+      path = Path.expand("../fixtures/realistic_sample.ex", __DIR__)
+
+      assert Crap.analyze_file(path, []) == {:error, :invalid_coverage_map}
     end
   end
 

@@ -1,5 +1,5 @@
 defmodule Crap.ScannerTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   describe "source_files/1" do
     test "returns sorted root lib source files and ignores non-source and umbrella paths" do
@@ -14,6 +14,19 @@ defmodule Crap.ScannerTest do
                Path.join(root, "lib/a.ex"),
                Path.join(root, "lib/b.ex")
              ]
+    end
+
+    test "uses the current working directory by default" do
+      root = tmp_dir("scanner-files-default-root")
+
+      path =
+        write_source(root, "lib/example.ex", "defmodule Example do\n  def ok, do: :ok\nend\n")
+
+      File.cd!(root, fn ->
+        assert [file] = Crap.Scanner.source_files()
+        assert String.ends_with?(file, "/lib/example.ex")
+        assert File.read!(file) == File.read!(path)
+      end)
     end
   end
 
@@ -41,6 +54,29 @@ defmodule Crap.ScannerTest do
               ]} = Crap.Scanner.analyze(root)
 
       assert file == Path.join(root, "lib/example.ex")
+    end
+
+    test "uses the current working directory when analyzing by default" do
+      root = tmp_dir("scanner-analyze-default-root")
+
+      path =
+        write_source(root, "lib/example.ex", "defmodule Example do\n  def ok, do: :ok\nend\n")
+
+      File.cd!(root, fn ->
+        assert {:ok,
+                [
+                  %{
+                    file: file,
+                    module: Example,
+                    function: :ok,
+                    arity: 0,
+                    complexity: 1
+                  }
+                ]} = Crap.Scanner.analyze()
+
+        assert String.ends_with?(file, "/lib/example.ex")
+        assert File.read!(file) == File.read!(path)
+      end)
     end
 
     test "returns an empty result when no root lib source files exist" do

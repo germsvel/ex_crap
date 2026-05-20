@@ -15,6 +15,14 @@ defmodule Crap.ComplexityTest do
                Crap.Complexity.from_string(source)
     end
 
+    test "returns invalid_source for syntactically invalid source" do
+      assert Crap.Complexity.from_string("defmodule") == {:error, :invalid_source}
+    end
+
+    test "returns invalid_source for non-string source" do
+      assert Crap.Complexity.from_string(nil) == {:error, :invalid_source}
+    end
+
     test "discovers functions defined inside module-level if, else, and unless" do
       source = """
       defmodule Example do
@@ -37,6 +45,52 @@ defmodule Crap.ComplexityTest do
                %{module: Example, function: :disabled, arity: 0, complexity: 1},
                %{module: Example, function: :also_enabled, arity: 0, complexity: 1}
              ]
+    end
+
+    test "discovers functions in modules named with Module.concat list syntax" do
+      source = """
+      defmodule Module.concat([Example, Generated]) do
+        def ok, do: :ok
+      end
+      """
+
+      assert {:ok, [%{module: Example.Generated, function: :ok, arity: 0, complexity: 1}]} =
+               Crap.Complexity.from_string(source)
+    end
+
+    test "discovers functions in modules named with Module.concat atom list syntax" do
+      source = """
+      defmodule Module.concat([:Example, :Generated]) do
+        def ok, do: :ok
+      end
+      """
+
+      assert {:ok, [%{module: Example.Generated, function: :ok, arity: 0, complexity: 1}]} =
+               Crap.Complexity.from_string(source)
+    end
+
+    test "rejects definitions inside module-level list expressions" do
+      source = """
+      defmodule Example do
+        [
+          def one, do: :one,
+          def two, do: :two
+        ]
+      end
+      """
+
+      assert Crap.Complexity.from_string(source) == {:error, :invalid_source}
+    end
+
+    test "discovers functions in modules named with top-level __MODULE__ aliases" do
+      source = """
+      defmodule __MODULE__.Generated do
+        def ok, do: :ok
+      end
+      """
+
+      assert {:ok, [%{module: Generated, function: :ok, arity: 0, complexity: 1}]} =
+               Crap.Complexity.from_string(source)
     end
 
     test "counts if, unless, and boolean operators as decision points" do
@@ -160,6 +214,24 @@ defmodule Crap.ComplexityTest do
       """
 
       assert {:ok, [%{complexity: 5}]} = Crap.Complexity.from_string(source)
+    end
+
+    test "counts single try else and rescue clauses as decision points" do
+      source = """
+      defmodule Example do
+        def parse(value) do
+          try do
+            decode(value)
+          else
+            {:ok, decoded} -> decoded
+          rescue
+            ArgumentError -> :bad_argument
+          end
+        end
+      end
+      """
+
+      assert {:ok, [%{complexity: 4}]} = Crap.Complexity.from_string(source)
     end
 
     test "counts comprehension generators and filters as decision points" do
@@ -1002,6 +1074,10 @@ defmodule Crap.ComplexityTest do
 
     test "returns an error tuple for an unreadable file" do
       assert {:error, :enoent} = Crap.Complexity.from_file("test/fixtures/missing.ex")
+    end
+
+    test "returns invalid_path for non-string paths" do
+      assert Crap.Complexity.from_file(nil) == {:error, :invalid_path}
     end
   end
 end
