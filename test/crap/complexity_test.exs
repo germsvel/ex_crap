@@ -260,6 +260,18 @@ defmodule Crap.ComplexityTest do
       assert {:ok, [%{complexity: 4}]} = Crap.Complexity.from_string(source)
     end
 
+    test "does not treat zero-arity for calls as comprehensions" do
+      source = """
+      defmodule Example do
+        def run do
+          for
+        end
+      end
+      """
+
+      assert {:ok, [%{complexity: 1}]} = Crap.Complexity.from_string(source)
+    end
+
     test "counts receive clauses and after timeout as decision points" do
       source = """
       defmodule Example do

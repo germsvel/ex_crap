@@ -773,7 +773,7 @@ defmodule Crap.Complexity do
       arrow_count(keyword_value(args, :catch)) + decision_count(args)
   end
 
-  defp decision_count({:for, _meta, args}) do
+  defp decision_count({:for, _meta, args}) when is_list(args) do
     comprehension_qualifier_count(args) + decision_count(args)
   end
 
