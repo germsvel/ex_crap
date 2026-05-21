@@ -153,11 +153,9 @@ defmodule Mix.Tasks.Crap do
   end
 
   defp failure_section(title, rows, line_fun) do
-    lines = rows |> Enum.take(5) |> Enum.map(line_fun)
-    overflow = length(rows) - length(lines)
-    suffix = if overflow > 0, do: ["  ... and #{overflow} more"], else: []
+    lines = Enum.map(rows, line_fun)
 
-    (["#{title}: #{length(rows)}"] ++ lines ++ suffix)
+    (["#{title}: #{length(rows)}"] ++ lines)
     |> Enum.join("\n")
   end
 

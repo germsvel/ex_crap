@@ -208,6 +208,66 @@ defmodule Mix.Tasks.CrapTest do
       end)
     end
 
+    test "raises with every high score in the threshold summary" do
+      with_coverdata(fn coverdata_path ->
+        in_tmp("crap-all-high-scores", fn ->
+          File.mkdir_p!("lib")
+
+          File.write!(
+            "lib/example.ex",
+            """
+            defmodule Example do
+              def risky1(a, b, c, d), do: risky(a, b, c, d)
+              def risky2(a, b, c, d), do: risky(a, b, c, d)
+              def risky3(a, b, c, d), do: risky(a, b, c, d)
+              def risky4(a, b, c, d), do: risky(a, b, c, d)
+              def risky5(a, b, c, d), do: risky(a, b, c, d)
+              def risky6(a, b, c, d), do: risky(a, b, c, d)
+
+              defp risky(a, b, c, d) do
+                cond do
+                  a -> :a
+                  b -> :b
+                  c -> :c
+                  d -> :d
+                  true -> :fallback
+                end
+              end
+            end
+            """
+          )
+
+          test_pid = self()
+
+          capture_io(fn ->
+            error =
+              assert_raise Mix.Error, fn ->
+                Mix.Tasks.Crap.run([
+                  "--coverdata",
+                  coverdata_path,
+                  "--max-score",
+                  "0.01"
+                ])
+              end
+
+            send(test_pid, {:error, error})
+          end)
+
+          assert_receive {:error, error}
+
+          message = Exception.message(error)
+
+          assert message =~ "High scores: 7"
+
+          for name <- ~w(risky risky1 risky2 risky3 risky4 risky5 risky6) do
+            assert message =~ "lib/example.ex Example.#{name}/4 score="
+          end
+
+          refute message =~ "... and"
+        end)
+      end)
+    end
+
     test "scores missing function coverage as zero and passes when score is within threshold" do
       with_coverdata(fn coverdata_path ->
         in_tmp("crap-missing-coverage-under-threshold", fn ->
