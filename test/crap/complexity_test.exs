@@ -913,6 +913,26 @@ defmodule Crap.ComplexityTest do
               ]} = Crap.Complexity.from_string(source)
     end
 
+    test "allows Phoenix embedded template function declarations" do
+      source = ~S'''
+      defmodule ScoutWeb.UserHTML do
+        use ScoutWeb, :html
+
+        embed_templates "user_html/*"
+
+        @doc """
+        Renders a user form.
+        """
+        attr :changeset, Ecto.Changeset, required: true
+        attr :action, :string, required: true
+
+        def user_form(assigns)
+      end
+      '''
+
+      assert Crap.Complexity.from_string(source) == {:ok, []}
+    end
+
     test "returns an error tuple for bodyless supported definitions inside modules" do
       for definition <- ["def", "defp", "defmacro", "defmacrop"] do
         source = """

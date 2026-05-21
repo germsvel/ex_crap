@@ -193,12 +193,17 @@ defmodule Crap.Complexity do
          _in_executable?,
          _implemented_definitions
        ) do
+    implemented_definitions =
+      body
+      |> implemented_definitions()
+      |> maybe_include_embedded_template_declarations(body)
+
     not module_name_ast?(module_ast) ||
       malformed_executable_container?(
         body,
         module_name(module_ast, current_module),
         true,
-        implemented_definitions(body)
+        implemented_definitions
       )
   end
 
@@ -399,6 +404,34 @@ defmodule Crap.Complexity do
     do: Enum.flat_map(list, &definitions_with_bodies/1)
 
   defp definitions_with_bodies(_quoted), do: []
+
+  defp maybe_include_embedded_template_declarations(implemented_definitions, body) do
+    if embeds_templates?(body) do
+      MapSet.union(implemented_definitions, MapSet.new(bodyless_public_definitions(body)))
+    else
+      implemented_definitions
+    end
+  end
+
+  defp embeds_templates?({:__block__, _meta, expressions}),
+    do: Enum.any?(expressions, &embeds_templates?/1)
+
+  defp embeds_templates?({:embed_templates, _meta, _args}), do: true
+
+  defp embeds_templates?(_quoted), do: false
+
+  defp bodyless_public_definitions({:__block__, _meta, expressions}) do
+    Enum.flat_map(expressions, &bodyless_public_definitions/1)
+  end
+
+  defp bodyless_public_definitions({:def, _meta, [head]}) do
+    case definition_key(:def, head) do
+      {:ok, key} -> [key]
+      :error -> []
+    end
+  end
+
+  defp bodyless_public_definitions(_quoted), do: []
 
   defp definition_key(kind, {:when, _meta, [head | _guards]}), do: definition_key(kind, head)
 
