@@ -9,7 +9,13 @@ defmodule ExCrap.MixProject do
       start_permanent: Mix.env() == :prod,
       compilers: [:boundary] ++ Mix.compilers(),
       aliases: [
-        doc: "docs"
+        doc: "docs",
+        precommit: [
+          "format",
+          "test --cover --export-coverage default",
+          "crap",
+          "muex"
+        ]
       ],
       deps: [
         {:stream_data, "~> 1.3", only: :test},
@@ -22,5 +28,9 @@ defmodule ExCrap.MixProject do
 
   def application do
     [extra_applications: [:logger, :tools]]
+  end
+
+  def cli do
+    [preferred_envs: [precommit: :test]]
   end
 end
