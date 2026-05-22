@@ -14,6 +14,7 @@ defmodule ExCrap.MixProject do
       deps: [
         {:stream_data, "~> 1.3", only: :test},
         {:ex_doc, "~> 0.34", only: :dev, runtime: false},
+        {:muex, "~> 0.6", only: [:dev, :test], runtime: false},
         {:boundary, "~> 0.10", runtime: false}
       ]
     ]
