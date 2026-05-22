@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Elixir Sample Analysis Report</title>
+<style>body{font-family:system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;line-height:1.45;margin:2rem;color:#1f2937}table{border-collapse:collapse;width:100%;margin-top:1rem}th,td{border:1px solid #d1d5db;padding:.5rem;text-align:left;vertical-align:top}th{background:#f3f4f6}code{background:#f3f4f6;padding:.1rem .25rem;border-radius:.25rem}.summary{display:flex;gap:1rem;flex-wrap:wrap}.summary div{background:#f9fafb;border:1px solid #e5e7eb;border-radius:.5rem;padding:.75rem 1rem}</style>
+</head>
+<body>
+<h1>Elixir Sample Analysis Report</h1>
+<p>Canonical samples analyzed from <code>docs/elixir_samples/[0-9][0-9]_*/*.ex</code>. Raw originals are excluded.</p>
+<section>
+<h2>Summary</h2>
+<div class="summary"><div>Total files: 11</div><div>Successful: 11</div><div>Failed: 0</div></div>
+</section>
+<section>
+<h2>Per-File Results</h2>
+<table>
+<thead><tr><th>Relative file</th><th>Constructs/category</th><th>Status</th><th>Function count</th><th>Total complexity</th><th>Max complexity</th><th>Average complexity</th><th>Error</th></tr></thead>
+<tbody>
+<tr><td>01_basic_modules/simple_math.ex</td><td>defmodule, def/defp, guards, default args, @doc/@spec</td><td>ok</td><td>7</td><td>14</td><td>3</td><td>2.00</td><td></td></tr>
+<tr><td>01_basic_modules/string_processor.ex</td><td>defmodule, def/defp, guards, default args, @doc/@spec</td><td>ok</td><td>9</td><td>28</td><td>6</td><td>3.11</td><td></td></tr>
+<tr><td>02_typespecs/serializer.ex</td><td>@type, @typep, @opaque, @spec, @callback, union/recursive types</td><td>ok</td><td>6</td><td>17</td><td>7</td><td>2.83</td><td></td></tr>
+<tr><td>03_structs_protocols/measurement.ex</td><td>defstruct, @enforce_keys, defimpl Inspect/String.Chars</td><td>ok</td><td>13</td><td>36</td><td>8</td><td>2.77</td><td></td></tr>
+<tr><td>04_behaviours/pipeline.ex</td><td>@behaviour, @callback, @optional_callbacks, @impl</td><td>ok</td><td>13</td><td>48</td><td>10</td><td>3.69</td><td></td></tr>
+<tr><td>05_macros/registerable.ex</td><td>defmacro, __using__, @before_compile, quote/unquote/unquote_splicing</td><td>ok</td><td>6</td><td>11</td><td>5</td><td>1.83</td><td></td></tr>
+<tr><td>06_pattern_matching/data_validator.ex</td><td>case/cond/with, pin operator, multi-clause, nested destructuring</td><td>ok</td><td>21</td><td>89</td><td>15</td><td>4.24</td><td></td></tr>
+<tr><td>07_genserver/cache_janitor.ex</td><td>use GenServer, all callbacks, :erlang.send_after, client API</td><td>ok</td><td>15</td><td>30</td><td>7</td><td>2.00</td><td></td></tr>
+<tr><td>08_supervisors_otp/sample_app.ex</td><td>Application, Supervisor, Agent, Task.Supervisor, child_spec</td><td>ok</td><td>19</td><td>27</td><td>7</td><td>1.42</td><td></td></tr>
+<tr><td>09_protocols/renderable.ex</td><td>defprotocol, @fallback_to_any, 12 defimpl, defdelegate</td><td>ok</td><td>11</td><td>23</td><td>5</td><td>2.09</td><td></td></tr>
+<tr><td>10_advanced/task_runner.ex</td><td>defexception, raise/rescue, try/catch, Stream, for, Bitwise</td><td>ok</td><td>12</td><td>47</td><td>10</td><td>3.92</td><td></td></tr>
+</tbody>
+</table>
+</section>
+<section>
+<h2>Potential Gaps</h2>
+<p>No canonical samples failed analysis or produced empty results.</p>
+</section>
+</body>
+</html>
