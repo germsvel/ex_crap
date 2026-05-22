@@ -1,13 +1,13 @@
 # CRAP
 
-CRAP is an Elixir library and Mix task for calculating Change Risk Anti-Patterns scores from cyclomatic complexity and test coverage. It is a prioritization signal for uncovered complexity, not a complete code-quality or maintainability measure.
+ExCrap is an Elixir library and Mix task for calculating Change Risk Anti-Patterns scores from cyclomatic complexity and test coverage. It is a prioritization signal for uncovered complexity, not a complete code-quality or maintainability measure.
 
 ## Library API
 
 Calculate a score directly:
 
 ```elixir
-Crap.score(4, 75)
+ExCrap.score(4, 75)
 # {:ok, 4.25}
 ```
 
@@ -15,7 +15,7 @@ Analyze source with explicit coverage data:
 
 ```elixir
 coverage = %{{Example, :visible?, 1} => 75}
-Crap.analyze_string(source, coverage)
+ExCrap.analyze_string(source, coverage)
 ```
 
 ## Mix Task

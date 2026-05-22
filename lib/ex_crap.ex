@@ -1,4 +1,4 @@
-defmodule Crap do
+defmodule ExCrap do
   @moduledoc """
   Public API for calculating CRAP scores from complexity and coverage data.
 
@@ -10,12 +10,12 @@ defmodule Crap do
   selection, umbrella support, third-party coverage formats, and richer reporting.
   """
 
-  alias Crap.Complexity
+  alias ExCrap.Complexity
 
   @doc """
   Analyzes one Elixir source file and combines each discovered function with explicit coverage.
 
-  This is a single-file convenience wrapper around `Crap.Complexity.from_file/1`.
+  This is a single-file convenience wrapper around `ExCrap.Complexity.from_file/1`.
   Valid files with no analyzable function or macro bodies return `{:ok, []}`.
   It does not perform project-wide scanning or coverage discovery.
   """

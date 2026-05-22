@@ -1,4 +1,4 @@
-defmodule Crap.ComplexityTest do
+defmodule ExCrap.ComplexityTest do
   use ExUnit.Case, async: true
 
   describe "from_string/1" do
@@ -12,15 +12,15 @@ defmodule Crap.ComplexityTest do
       """
 
       assert {:ok, [%{module: Example, function: :greet, arity: 1, line: 2, complexity: 1}]} =
-               Crap.Complexity.from_string(source)
+               ExCrap.Complexity.from_string(source)
     end
 
     test "returns invalid_source for syntactically invalid source" do
-      assert Crap.Complexity.from_string("defmodule") == {:error, :invalid_source}
+      assert ExCrap.Complexity.from_string("defmodule") == {:error, :invalid_source}
     end
 
     test "returns invalid_source for non-string source" do
-      assert Crap.Complexity.from_string(nil) == {:error, :invalid_source}
+      assert ExCrap.Complexity.from_string(nil) == {:error, :invalid_source}
     end
 
     test "discovers functions defined inside module-level if, else, and unless" do
@@ -38,7 +38,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, results} = Crap.Complexity.from_string(source)
+      assert {:ok, results} = ExCrap.Complexity.from_string(source)
 
       assert Enum.map(results, &Map.take(&1, [:module, :function, :arity, :complexity])) == [
                %{module: Example, function: :enabled, arity: 0, complexity: 1},
@@ -55,7 +55,7 @@ defmodule Crap.ComplexityTest do
       """
 
       assert {:ok, [%{module: Example.Generated, function: :ok, arity: 0, complexity: 1}]} =
-               Crap.Complexity.from_string(source)
+               ExCrap.Complexity.from_string(source)
     end
 
     test "discovers functions in modules named with Module.concat atom list syntax" do
@@ -66,7 +66,7 @@ defmodule Crap.ComplexityTest do
       """
 
       assert {:ok, [%{module: Example.Generated, function: :ok, arity: 0, complexity: 1}]} =
-               Crap.Complexity.from_string(source)
+               ExCrap.Complexity.from_string(source)
     end
 
     test "rejects definitions inside module-level list expressions" do
@@ -79,7 +79,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert Crap.Complexity.from_string(source) == {:error, :invalid_source}
+      assert ExCrap.Complexity.from_string(source) == {:error, :invalid_source}
     end
 
     test "discovers functions in modules named with top-level __MODULE__ aliases" do
@@ -90,7 +90,7 @@ defmodule Crap.ComplexityTest do
       """
 
       assert {:ok, [%{module: Generated, function: :ok, arity: 0, complexity: 1}]} =
-               Crap.Complexity.from_string(source)
+               ExCrap.Complexity.from_string(source)
     end
 
     test "counts if, unless, and boolean operators as decision points" do
@@ -108,7 +108,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, results} = Crap.Complexity.from_string(source)
+      assert {:ok, results} = ExCrap.Complexity.from_string(source)
       assert [%{complexity: 5}] = results
     end
 
@@ -121,7 +121,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, [%{complexity: 3}]} = Crap.Complexity.from_string(source)
+      assert {:ok, [%{complexity: 3}]} = ExCrap.Complexity.from_string(source)
     end
 
     test "counts guard boolean operators as decision points" do
@@ -133,7 +133,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, [%{complexity: 2}]} = Crap.Complexity.from_string(source)
+      assert {:ok, [%{complexity: 2}]} = ExCrap.Complexity.from_string(source)
     end
 
     test "counts each case branch and cond clause as a decision point" do
@@ -155,7 +155,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, [%{complexity: 7}]} = Crap.Complexity.from_string(source)
+      assert {:ok, [%{complexity: 7}]} = ExCrap.Complexity.from_string(source)
     end
 
     test "counts with else clauses as decision points" do
@@ -173,7 +173,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, [%{complexity: 5}]} = Crap.Complexity.from_string(source)
+      assert {:ok, [%{complexity: 5}]} = ExCrap.Complexity.from_string(source)
     end
 
     test "counts try rescue and catch as decision points" do
@@ -194,7 +194,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, [%{complexity: 5}]} = Crap.Complexity.from_string(source)
+      assert {:ok, [%{complexity: 5}]} = ExCrap.Complexity.from_string(source)
     end
 
     test "counts try else clauses as decision points" do
@@ -213,7 +213,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, [%{complexity: 5}]} = Crap.Complexity.from_string(source)
+      assert {:ok, [%{complexity: 5}]} = ExCrap.Complexity.from_string(source)
     end
 
     test "counts single try else and rescue clauses as decision points" do
@@ -231,7 +231,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, [%{complexity: 4}]} = Crap.Complexity.from_string(source)
+      assert {:ok, [%{complexity: 4}]} = ExCrap.Complexity.from_string(source)
     end
 
     test "counts comprehension generators and filters as decision points" do
@@ -243,7 +243,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, [%{complexity: 4}]} = Crap.Complexity.from_string(source)
+      assert {:ok, [%{complexity: 4}]} = ExCrap.Complexity.from_string(source)
     end
 
     test "counts multiple comprehension generators and filters with reduce" do
@@ -257,7 +257,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, [%{complexity: 4}]} = Crap.Complexity.from_string(source)
+      assert {:ok, [%{complexity: 4}]} = ExCrap.Complexity.from_string(source)
     end
 
     test "does not treat zero-arity for calls as comprehensions" do
@@ -269,7 +269,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, [%{complexity: 1}]} = Crap.Complexity.from_string(source)
+      assert {:ok, [%{complexity: 1}]} = ExCrap.Complexity.from_string(source)
     end
 
     test "counts receive clauses and after timeout as decision points" do
@@ -286,7 +286,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, [%{complexity: 4}]} = Crap.Complexity.from_string(source)
+      assert {:ok, [%{complexity: 4}]} = ExCrap.Complexity.from_string(source)
     end
 
     test "finds control flow keywords after keyword literals" do
@@ -307,7 +307,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, [%{complexity: 5}]} = Crap.Complexity.from_string(source)
+      assert {:ok, [%{complexity: 5}]} = ExCrap.Complexity.from_string(source)
     end
 
     test "prefers control flow keyword blocks over matching keyword literals" do
@@ -330,7 +330,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, results} = Crap.Complexity.from_string(source)
+      assert {:ok, results} = ExCrap.Complexity.from_string(source)
 
       assert Enum.find(results, &(&1.function == :case_literal)).complexity == 3
       assert Enum.find(results, &(&1.function == :with_literal)).complexity == 3
@@ -367,7 +367,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, [%{complexity: 14}]} = Crap.Complexity.from_string(source)
+      assert {:ok, [%{complexity: 14}]} = ExCrap.Complexity.from_string(source)
     end
 
     test "handles multiple functions and aggregates same name and arity clauses" do
@@ -382,7 +382,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, results} = Crap.Complexity.from_string(source)
+      assert {:ok, results} = ExCrap.Complexity.from_string(source)
 
       assert Enum.find(results, &(&1.function == :size)) == %{
                module: Example,
@@ -411,7 +411,7 @@ defmodule Crap.ComplexityTest do
       """
 
       assert {:ok, [%{module: Example, function: :classify, arity: 1, line: 2, complexity: 5}]} =
-               Crap.Complexity.from_string(source)
+               ExCrap.Complexity.from_string(source)
     end
 
     test "counts anonymous function clauses and guarded clause decisions" do
@@ -428,7 +428,7 @@ defmodule Crap.ComplexityTest do
       """
 
       assert {:ok, [%{module: Example, function: :classify_fun, arity: 0, complexity: 5}]} =
-               Crap.Complexity.from_string(source)
+               ExCrap.Complexity.from_string(source)
     end
 
     test "discovers defmacro and defmacrop definitions" do
@@ -444,7 +444,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, results} = Crap.Complexity.from_string(source)
+      assert {:ok, results} = ExCrap.Complexity.from_string(source)
 
       assert Enum.find(results, &(&1.function == :public_macro)) == %{
                module: Example,
@@ -476,7 +476,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, results} = Crap.Complexity.from_string(source)
+      assert {:ok, results} = ExCrap.Complexity.from_string(source)
       outer = Enum.find(results, &(&1.module == Outer and &1.function == :outer_fn))
       assert outer.complexity == 1
     end
@@ -489,7 +489,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert Crap.Complexity.from_string(source) == {:ok, []}
+      assert ExCrap.Complexity.from_string(source) == {:ok, []}
     end
 
     test "returns an empty result for a callback-only module" do
@@ -499,7 +499,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert Crap.Complexity.from_string(source) == {:ok, []}
+      assert ExCrap.Complexity.from_string(source) == {:ok, []}
     end
 
     test "returns an empty result for an empty valid module" do
@@ -508,7 +508,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert Crap.Complexity.from_string(source) == {:ok, []}
+      assert ExCrap.Complexity.from_string(source) == {:ok, []}
     end
 
     test "accepts atom and __MODULE__ based module names" do
@@ -527,10 +527,10 @@ defmodule Crap.ComplexityTest do
       """
 
       assert {:ok, [%{module: AtomNamed, function: :run, arity: 0, complexity: 1}]} =
-               Crap.Complexity.from_string(atom_source)
+               ExCrap.Complexity.from_string(atom_source)
 
       assert {:ok, [%{module: Outer.Nested, function: :run, arity: 0, complexity: 1}]} =
-               Crap.Complexity.from_string(nested_source)
+               ExCrap.Complexity.from_string(nested_source)
     end
 
     test "accepts Module.concat based module names" do
@@ -543,7 +543,7 @@ defmodule Crap.ComplexityTest do
       """
 
       assert {:ok, [%{module: Outer.Nested, function: :run, arity: 0, complexity: 1}]} =
-               Crap.Complexity.from_string(source)
+               ExCrap.Complexity.from_string(source)
     end
 
     test "ignores common declarations and helper constructs safely" do
@@ -570,7 +570,7 @@ defmodule Crap.ComplexityTest do
       """
 
       assert {:ok, [%{module: Example.Helpers, function: :run, arity: 1, complexity: 1}]} =
-               Crap.Complexity.from_string(source)
+               ExCrap.Complexity.from_string(source)
     end
 
     test "analyzes functions inside defimpl blocks" do
@@ -590,7 +590,7 @@ defmodule Crap.ComplexityTest do
                   arity: 1,
                   complexity: 2
                 }
-              ]} = Crap.Complexity.from_string(source)
+              ]} = ExCrap.Complexity.from_string(source)
     end
 
     test "analyzes keyword-form defimpl blocks" do
@@ -606,7 +606,7 @@ defmodule Crap.ComplexityTest do
                   arity: 1,
                   complexity: 1
                 }
-              ]} = Crap.Complexity.from_string(source)
+              ]} = ExCrap.Complexity.from_string(source)
     end
 
     test "analyzes defimpl blocks for multiple target modules" do
@@ -616,7 +616,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:ok, results} = Crap.Complexity.from_string(source)
+      assert {:ok, results} = ExCrap.Complexity.from_string(source)
 
       assert Enum.map(results, &Map.take(&1, [:module, :function, :arity, :complexity])) == [
                %{module: String.Chars.Example.One, function: :to_string, arity: 1, complexity: 1},
@@ -639,7 +639,7 @@ defmodule Crap.ComplexityTest do
                   arity: 1,
                   complexity: 1
                 }
-              ]} = Crap.Complexity.from_string(source)
+              ]} = ExCrap.Complexity.from_string(source)
     end
 
     test "preserves explicit __MODULE__ context in nested defimpl Module.concat forms" do
@@ -659,7 +659,7 @@ defmodule Crap.ComplexityTest do
                   arity: 1,
                   complexity: 1
                 }
-              ]} = Crap.Complexity.from_string(source)
+              ]} = ExCrap.Complexity.from_string(source)
     end
 
     test "analyzes nested defimpl blocks without explicit for target" do
@@ -679,7 +679,7 @@ defmodule Crap.ComplexityTest do
                   arity: 1,
                   complexity: 1
                 }
-              ]} = Crap.Complexity.from_string(source)
+              ]} = ExCrap.Complexity.from_string(source)
     end
 
     test "analyzes nested defimpl blocks with empty options as implicit for current module" do
@@ -703,7 +703,7 @@ defmodule Crap.ComplexityTest do
                   arity: 1,
                   complexity: 1
                 }
-              ]} = Crap.Complexity.from_string(source)
+              ]} = ExCrap.Complexity.from_string(source)
     end
 
     test "scopes local protocol aliases in nested explicit defimpl blocks" do
@@ -731,7 +731,7 @@ defmodule Crap.ComplexityTest do
                   arity: 1,
                   complexity: 1
                 }
-              ]} = Crap.Complexity.from_string(source)
+              ]} = ExCrap.Complexity.from_string(source)
     end
 
     test "scopes local multi-part protocol aliases in nested explicit defimpl blocks" do
@@ -759,7 +759,7 @@ defmodule Crap.ComplexityTest do
                   arity: 1,
                   complexity: 1
                 }
-              ]} = Crap.Complexity.from_string(source)
+              ]} = ExCrap.Complexity.from_string(source)
     end
 
     test "keeps multi-part protocol aliases absolute in nested explicit defimpl blocks" do
@@ -783,7 +783,7 @@ defmodule Crap.ComplexityTest do
                   arity: 1,
                   complexity: 1
                 }
-              ]} = Crap.Complexity.from_string(source)
+              ]} = ExCrap.Complexity.from_string(source)
     end
 
     test "keeps undeclared multi-part target aliases absolute in nested explicit defimpl blocks" do
@@ -803,7 +803,7 @@ defmodule Crap.ComplexityTest do
                   arity: 1,
                   complexity: 1
                 }
-              ]} = Crap.Complexity.from_string(source)
+              ]} = ExCrap.Complexity.from_string(source)
     end
 
     test "resolves local alias declarations in nested explicit defimpl blocks" do
@@ -826,7 +826,7 @@ defmodule Crap.ComplexityTest do
                   arity: 1,
                   complexity: 1
                 }
-              ]} = Crap.Complexity.from_string(source)
+              ]} = ExCrap.Complexity.from_string(source)
     end
 
     test "does not resolve aliases declared after nested explicit defimpl blocks" do
@@ -849,7 +849,7 @@ defmodule Crap.ComplexityTest do
                   arity: 1,
                   complexity: 1
                 }
-              ]} = Crap.Complexity.from_string(source)
+              ]} = ExCrap.Complexity.from_string(source)
     end
 
     test "resolves local shorthand alias declarations in nested explicit defimpl blocks" do
@@ -872,7 +872,7 @@ defmodule Crap.ComplexityTest do
                   arity: 1,
                   complexity: 1
                 }
-              ]} = Crap.Complexity.from_string(source)
+              ]} = ExCrap.Complexity.from_string(source)
     end
 
     test "allows default-argument function heads before implementation clauses" do
@@ -895,7 +895,7 @@ defmodule Crap.ComplexityTest do
                   line: 4,
                   complexity: 2
                 }
-              ]} = Crap.Complexity.from_string(source)
+              ]} = ExCrap.Complexity.from_string(source)
     end
 
     test "allows bodyless declaration heads when implementation clauses exist" do
@@ -922,7 +922,7 @@ defmodule Crap.ComplexityTest do
                   line: 4,
                   complexity: 2
                 }
-              ]} = Crap.Complexity.from_string(source)
+              ]} = ExCrap.Complexity.from_string(source)
     end
 
     test "allows Phoenix embedded template function declarations" do
@@ -942,7 +942,7 @@ defmodule Crap.ComplexityTest do
       end
       '''
 
-      assert Crap.Complexity.from_string(source) == {:ok, []}
+      assert ExCrap.Complexity.from_string(source) == {:ok, []}
     end
 
     test "returns an error tuple for bodyless supported definitions inside modules" do
@@ -953,7 +953,7 @@ defmodule Crap.ComplexityTest do
         end
         """
 
-        assert {:error, :invalid_source} = Crap.Complexity.from_string(source)
+        assert {:error, :invalid_source} = ExCrap.Complexity.from_string(source)
       end
     end
 
@@ -965,7 +965,7 @@ defmodule Crap.ComplexityTest do
         end
         """
 
-        assert {:error, :invalid_source} = Crap.Complexity.from_string(source)
+        assert {:error, :invalid_source} = ExCrap.Complexity.from_string(source)
       end
     end
 
@@ -985,8 +985,8 @@ defmodule Crap.ComplexityTest do
         end
         """
 
-        assert {:error, :invalid_source} = Crap.Complexity.from_string(bodyless_source)
-        assert {:error, :invalid_source} = Crap.Complexity.from_string(bodied_source)
+        assert {:error, :invalid_source} = ExCrap.Complexity.from_string(bodyless_source)
+        assert {:error, :invalid_source} = ExCrap.Complexity.from_string(bodied_source)
       end
     end
 
@@ -1001,26 +1001,26 @@ defmodule Crap.ComplexityTest do
         end
         """
 
-        assert {:error, :invalid_source} = Crap.Complexity.from_string(source)
+        assert {:error, :invalid_source} = ExCrap.Complexity.from_string(source)
       end
     end
 
     test "returns an error tuple for incomplete supported executable containers" do
-      assert {:error, :invalid_source} = Crap.Complexity.from_string("defmodule Foo")
+      assert {:error, :invalid_source} = ExCrap.Complexity.from_string("defmodule Foo")
 
       assert {:error, :invalid_source} =
-               Crap.Complexity.from_string("defimpl String.Chars, for: Example")
+               ExCrap.Complexity.from_string("defimpl String.Chars, for: Example")
     end
 
     test "returns an error tuple for invalid supported executable container names" do
       assert {:error, :invalid_source} =
-               Crap.Complexity.from_string("defmodule 123 do\nend")
+               ExCrap.Complexity.from_string("defmodule 123 do\nend")
 
       assert {:error, :invalid_source} =
-               Crap.Complexity.from_string("defimpl 123, for: Example do\nend")
+               ExCrap.Complexity.from_string("defimpl 123, for: Example do\nend")
 
       assert {:error, :invalid_source} =
-               Crap.Complexity.from_string("defimpl String.Chars, for: 123 do\nend")
+               ExCrap.Complexity.from_string("defimpl String.Chars, for: 123 do\nend")
     end
 
     test "returns an error tuple for unsupported defimpl shapes" do
@@ -1029,7 +1029,7 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:error, :invalid_source} = Crap.Complexity.from_string(source)
+      assert {:error, :invalid_source} = ExCrap.Complexity.from_string(source)
     end
 
     test "returns an error tuple for top-level defimpl blocks with empty options" do
@@ -1039,11 +1039,11 @@ defmodule Crap.ComplexityTest do
       end
       """
 
-      assert {:error, :invalid_source} = Crap.Complexity.from_string(source)
+      assert {:error, :invalid_source} = ExCrap.Complexity.from_string(source)
     end
 
     test "returns an error tuple for invalid Elixir source" do
-      assert {:error, :invalid_source} = Crap.Complexity.from_string("defmodule")
+      assert {:error, :invalid_source} = ExCrap.Complexity.from_string("defmodule")
     end
   end
 
@@ -1051,7 +1051,7 @@ defmodule Crap.ComplexityTest do
     test "parses a realistic Elixir source file without evaluating it" do
       path = Path.expand("../../fixtures/realistic_sample.ex", __DIR__)
 
-      assert {:ok, results} = Crap.Complexity.from_file(path)
+      assert {:ok, results} = ExCrap.Complexity.from_file(path)
 
       assert Enum.find(results, &(&1.function == :normalize)) == %{
                module: Realistic.Sample,
@@ -1089,7 +1089,7 @@ defmodule Crap.ComplexityTest do
     test "parses new AST shapes in the realistic fixture" do
       path = Path.expand("../../fixtures/realistic_sample.ex", __DIR__)
 
-      assert {:ok, results} = Crap.Complexity.from_file(path)
+      assert {:ok, results} = ExCrap.Complexity.from_file(path)
 
       assert %{module: Realistic.Sample, function: :fetch, arity: 2, complexity: 5} =
                Enum.find(results, &(&1.function == :fetch))
@@ -1105,11 +1105,11 @@ defmodule Crap.ComplexityTest do
     end
 
     test "returns an error tuple for an unreadable file" do
-      assert {:error, :enoent} = Crap.Complexity.from_file("test/fixtures/missing.ex")
+      assert {:error, :enoent} = ExCrap.Complexity.from_file("test/fixtures/missing.ex")
     end
 
     test "returns invalid_path for non-string paths" do
-      assert Crap.Complexity.from_file(nil) == {:error, :invalid_path}
+      assert ExCrap.Complexity.from_file(nil) == {:error, :invalid_path}
     end
   end
 end

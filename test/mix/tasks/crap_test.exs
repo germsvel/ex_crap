@@ -165,14 +165,14 @@ defmodule Mix.Tasks.CrapTest do
 
           File.write!(
             "lib/example.ex",
-            "defmodule Crap do\n  def score(complexity, coverage), do: {complexity, coverage}\nend\n"
+            "defmodule ExCrap do\n  def score(complexity, coverage), do: {complexity, coverage}\nend\n"
           )
 
           output = capture_io(fn -> Mix.Tasks.Crap.run(["--coverdata", coverdata_path]) end)
 
           refute output =~ "Analysis includes data"
           assert output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
-          assert output =~ "lib/example.ex | Crap | score/2"
+          assert output =~ "lib/example.ex | ExCrap | score/2"
           assert output =~ "scored"
         end)
       end)
@@ -185,13 +185,13 @@ defmodule Mix.Tasks.CrapTest do
 
           File.write!(
             "lib/example.ex",
-            "defmodule Crap do\n  def score(complexity, coverage), do: {complexity, coverage}\nend\n"
+            "defmodule ExCrap do\n  def score(complexity, coverage), do: {complexity, coverage}\nend\n"
           )
 
           output =
             capture_io(fn ->
               assert_raise Mix.Error,
-                           ~r/CRAP threshold failed: max_score=0\.01.*High scores: 1\n  lib\/example\.ex Crap\.score\/2 score=\d+\.\d{2}/s,
+                           ~r/CRAP threshold failed: max_score=0\.01.*High scores: 1\n  lib\/example\.ex ExCrap\.score\/2 score=\d+\.\d{2}/s,
                            fn ->
                              Mix.Tasks.Crap.run([
                                "--coverdata",
@@ -203,7 +203,7 @@ defmodule Mix.Tasks.CrapTest do
             end)
 
           assert output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
-          assert output =~ "lib/example.ex | Crap | score/2"
+          assert output =~ "lib/example.ex | ExCrap | score/2"
         end)
       end)
     end
@@ -339,9 +339,9 @@ defmodule Mix.Tasks.CrapTest do
 
     cover_active? = cover_active?()
 
-    unless cover_active?, do: assert({:ok, Crap} = :cover.compile_beam(Crap))
+    unless cover_active?, do: assert({:ok, ExCrap} = :cover.compile_beam(ExCrap))
 
-    assert {:ok, 1.0} = Crap.score(1, 100)
+    assert {:ok, 1.0} = ExCrap.score(1, 100)
     assert :ok = :cover.export(String.to_charlist(coverdata_path))
 
     unless cover_active?, do: :cover.stop()

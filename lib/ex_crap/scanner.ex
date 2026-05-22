@@ -1,4 +1,4 @@
-defmodule Crap.Scanner do
+defmodule ExCrap.Scanner do
   @moduledoc """
   Scans root project source files for CRAP analysis.
 
@@ -6,7 +6,7 @@ defmodule Crap.Scanner do
   not scan umbrella child apps or arbitrary caller-provided paths.
   """
 
-  alias Crap.Complexity
+  alias ExCrap.Complexity
 
   @doc """
   Returns sorted root `lib/**/*.ex` files under `root`.

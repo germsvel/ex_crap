@@ -3,26 +3,26 @@ defmodule CrapTest do
 
   describe "score/2" do
     test "returns complexity unchanged for 100 percent coverage" do
-      assert Crap.score(7, 100) == {:ok, 7.0}
+      assert ExCrap.score(7, 100) == {:ok, 7.0}
     end
 
     test "returns complexity squared plus complexity for 0 percent coverage" do
-      assert Crap.score(4, 0) == {:ok, 20.0}
+      assert ExCrap.score(4, 0) == {:ok, 20.0}
     end
 
     test "preserves fractional scores for intermediate coverage" do
-      assert Crap.score(4, 75) == {:ok, 4.25}
+      assert ExCrap.score(4, 75) == {:ok, 4.25}
     end
 
     test "rejects invalid complexity" do
-      assert Crap.score(-1, 50) == {:error, :invalid_complexity}
-      assert Crap.score(:high, 50) == {:error, :invalid_complexity}
+      assert ExCrap.score(-1, 50) == {:error, :invalid_complexity}
+      assert ExCrap.score(:high, 50) == {:error, :invalid_complexity}
     end
 
     test "rejects invalid coverage" do
-      assert Crap.score(4, -1) == {:error, :invalid_coverage}
-      assert Crap.score(4, 101) == {:error, :invalid_coverage}
-      assert Crap.score(4, :covered) == {:error, :invalid_coverage}
+      assert ExCrap.score(4, -1) == {:error, :invalid_coverage}
+      assert ExCrap.score(4, 101) == {:error, :invalid_coverage}
+      assert ExCrap.score(4, :covered) == {:error, :invalid_coverage}
     end
   end
 
@@ -49,7 +49,7 @@ defmodule CrapTest do
                   score: 2.5,
                   status: :scored
                 }
-              ]} = Crap.analyze_string(source, coverage)
+              ]} = ExCrap.analyze_string(source, coverage)
     end
 
     test "scores functions with missing coverage as zero percent" do
@@ -70,7 +70,7 @@ defmodule CrapTest do
                   score: 2.0,
                   status: :scored
                 }
-              ]} = Crap.analyze_string(source, %{})
+              ]} = ExCrap.analyze_string(source, %{})
     end
 
     test "returns an empty result for valid source with no analyzable functions" do
@@ -80,15 +80,15 @@ defmodule CrapTest do
       end
       """
 
-      assert Crap.analyze_string(source, %{}) == {:ok, []}
+      assert ExCrap.analyze_string(source, %{}) == {:ok, []}
     end
 
     test "still returns invalid_source for invalid source" do
-      assert Crap.analyze_string("defmodule", %{}) == {:error, :invalid_source}
+      assert ExCrap.analyze_string("defmodule", %{}) == {:error, :invalid_source}
     end
 
     test "rejects non-map coverage input" do
-      assert Crap.analyze_string("defmodule Example do\n  def ok, do: :ok\nend\n", []) ==
+      assert ExCrap.analyze_string("defmodule Example do\n  def ok, do: :ok\nend\n", []) ==
                {:error, :invalid_coverage_map}
     end
 
@@ -103,7 +103,7 @@ defmodule CrapTest do
                   arity: 0,
                   status: {:error, :invalid_coverage}
                 }
-              ]} = Crap.analyze_string(source, %{{Example, :ok, 0} => 101})
+              ]} = ExCrap.analyze_string(source, %{{Example, :ok, 0} => 101})
     end
   end
 
@@ -118,7 +118,7 @@ defmodule CrapTest do
         {Realistic.Sample, :fallback, 1} => 0
       }
 
-      assert {:ok, results} = Crap.analyze_file(path, coverage)
+      assert {:ok, results} = ExCrap.analyze_file(path, coverage)
 
       assert Enum.find(results, &(&1.function == :normalize)).score == 1.0
       assert Enum.find(results, &(&1.function == :classify)).score == 4.25
@@ -128,7 +128,7 @@ defmodule CrapTest do
 
     test "returns an empty result for a valid source file with no analyzable functions" do
       path =
-        Path.join(System.tmp_dir!(), "crap-empty-api-#{System.unique_integer([:positive])}.ex")
+        Path.join(System.tmp_dir!(), "ex-crap-empty-api-#{System.unique_integer([:positive])}.ex")
 
       File.write!(path, """
       defprotocol Example.Protocol do
@@ -137,7 +137,7 @@ defmodule CrapTest do
       """)
 
       try do
-        assert Crap.analyze_file(path, %{}) == {:ok, []}
+        assert ExCrap.analyze_file(path, %{}) == {:ok, []}
       after
         File.rm(path)
       end
@@ -146,7 +146,7 @@ defmodule CrapTest do
     test "rejects non-map coverage input" do
       path = Path.expand("../fixtures/realistic_sample.ex", __DIR__)
 
-      assert Crap.analyze_file(path, []) == {:error, :invalid_coverage_map}
+      assert ExCrap.analyze_file(path, []) == {:error, :invalid_coverage_map}
     end
   end
 
@@ -170,7 +170,7 @@ defmodule CrapTest do
                   status: :scored
                 }
               ]} =
-               Crap.analyze_string(source, %{})
+               ExCrap.analyze_string(source, %{})
     end
 
     test "scores aggregated multi-clause function" do
@@ -194,7 +194,7 @@ defmodule CrapTest do
                   status: :scored
                 }
               ]} =
-               Crap.analyze_string(source, %{})
+               ExCrap.analyze_string(source, %{})
     end
 
     test "scores function with with/else" do
@@ -224,7 +224,7 @@ defmodule CrapTest do
                   status: :scored
                 }
               ]} =
-               Crap.analyze_string(source, %{})
+               ExCrap.analyze_string(source, %{})
     end
 
     test "scores function with try/else and rescue" do
@@ -255,7 +255,7 @@ defmodule CrapTest do
                   status: :scored
                 }
               ]} =
-               Crap.analyze_string(source, %{})
+               ExCrap.analyze_string(source, %{})
     end
 
     test "scores function with comprehension generators and filters" do
@@ -279,7 +279,7 @@ defmodule CrapTest do
                   status: :scored
                 }
               ]} =
-               Crap.analyze_string(source, %{})
+               ExCrap.analyze_string(source, %{})
     end
 
     test "scores function with receive and after" do
@@ -308,7 +308,7 @@ defmodule CrapTest do
                   status: :scored
                 }
               ]} =
-               Crap.analyze_string(source, %{})
+               ExCrap.analyze_string(source, %{})
     end
 
     test "scores defmacro and defmacrop definitions" do
@@ -344,7 +344,7 @@ defmodule CrapTest do
                   score: 6.0,
                   status: :scored
                 }
-              ]} = Crap.analyze_string(source, %{})
+              ]} = ExCrap.analyze_string(source, %{})
     end
   end
 end

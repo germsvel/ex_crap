@@ -1,4 +1,4 @@
-defmodule Crap.ReportTest do
+defmodule ExCrap.ReportTest do
   use ExUnit.Case, async: true
 
   describe "rows/2" do
@@ -15,7 +15,7 @@ defmodule Crap.ReportTest do
 
       coverage = %{{Example, :visible?, 1} => 75}
 
-      assert Crap.Report.rows(functions, coverage) == [
+      assert ExCrap.Report.rows(functions, coverage) == [
                %{
                  file: "/project/lib/example.ex",
                  module: Example,
@@ -40,7 +40,7 @@ defmodule Crap.ReportTest do
         }
       ]
 
-      assert Crap.Report.rows(functions, %{}) == [
+      assert ExCrap.Report.rows(functions, %{}) == [
                %{
                  file: "/project/lib/example.ex",
                  module: Example,
@@ -74,7 +74,7 @@ defmodule Crap.ReportTest do
 
       coverage = %{{Example, :bad, 0} => 101, {Example, :good, 0} => 100}
 
-      assert [bad, good] = Crap.Report.rows(functions, coverage)
+      assert [bad, good] = ExCrap.Report.rows(functions, coverage)
       assert bad.status == {:error, :invalid_coverage}
       assert bad.score == nil
       assert good.status == :scored
@@ -94,7 +94,7 @@ defmodule Crap.ReportTest do
 
       coverage = %{{Example, :visible?, 1} => 75}
 
-      assert [row] = Crap.Report.rows(functions, coverage, "/project")
+      assert [row] = ExCrap.Report.rows(functions, coverage, "/project")
       assert row.file == "lib/example.ex"
     end
   end
@@ -134,7 +134,7 @@ defmodule Crap.ReportTest do
         }
       ]
 
-      output = Crap.Report.render(rows)
+      output = ExCrap.Report.render(rows)
 
       assert output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
       assert output =~ "/project/lib/b.ex | Example | risky/1 | 4 | 0.00% | 20.00 | scored"
@@ -161,7 +161,7 @@ defmodule Crap.ReportTest do
         }
       ]
 
-      assert Crap.Report.render(rows) =~ "110.00"
+      assert ExCrap.Report.render(rows) =~ "110.00"
     end
   end
 
@@ -203,7 +203,7 @@ defmodule Crap.ReportTest do
       assert %{
                high_scores: [high_score],
                score_errors: [score_error]
-             } = Crap.Report.failures(rows, 30)
+             } = ExCrap.Report.failures(rows, 30)
 
       assert high_score.function == :risky
       assert score_error.function == :bad
@@ -223,7 +223,7 @@ defmodule Crap.ReportTest do
         }
       ]
 
-      assert Crap.Report.failures(rows, 30) == %{
+      assert ExCrap.Report.failures(rows, 30) == %{
                high_scores: [],
                score_errors: []
              }

@@ -1,4 +1,4 @@
-defmodule Crap.ComplexityPropertyTest do
+defmodule ExCrap.ComplexityPropertyTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
@@ -17,7 +17,7 @@ defmodule Crap.ComplexityPropertyTest do
     end
     """
 
-    assert Crap.Complexity.from_string(source) ==
+    assert ExCrap.Complexity.from_string(source) ==
              {:ok,
               [
                 %{
@@ -39,7 +39,7 @@ defmodule Crap.ComplexityPropertyTest do
     end
     """
 
-    assert Crap.Complexity.from_string(source) ==
+    assert ExCrap.Complexity.from_string(source) ==
              {:ok,
               [
                 %{
@@ -69,7 +69,7 @@ defmodule Crap.ComplexityPropertyTest do
     end
     """
 
-    assert Crap.Complexity.from_string(source) ==
+    assert ExCrap.Complexity.from_string(source) ==
              {:ok,
               [
                 %{
@@ -1364,7 +1364,7 @@ defmodule Crap.ComplexityPropertyTest do
   end
 
   defp assert_analysis(source, model, expected) do
-    actual = Crap.Complexity.from_string(source)
+    actual = ExCrap.Complexity.from_string(source)
 
     assert actual == expected,
            """

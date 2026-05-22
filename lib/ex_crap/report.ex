@@ -1,4 +1,4 @@
-defmodule Crap.Report do
+defmodule ExCrap.Report do
   @moduledoc """
   Builds CRAP report rows from complexity and coverage data.
   """
@@ -55,7 +55,7 @@ defmodule Crap.Report do
   end
 
   defp put_score(row, coverage_percent) do
-    case Crap.score(row.complexity, coverage_percent) do
+    case ExCrap.score(row.complexity, coverage_percent) do
       {:ok, score} ->
         row
         |> Map.put(:coverage_percent, coverage_percent)

@@ -1,4 +1,4 @@
-defmodule Crap.Coverage do
+defmodule ExCrap.Coverage do
   @moduledoc """
   Imports Erlang/Mix coverdata and exposes function coverage percentages.
   """

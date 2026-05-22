@@ -52,16 +52,16 @@ defmodule Mix.Tasks.Crap do
 
   defp run_report(opts) do
     root = File.cwd!()
-    source_files = Crap.Scanner.source_files(root)
+    source_files = ExCrap.Scanner.source_files(root)
 
     with {:ok, max_score} <- max_score(opts),
          :ok <- ensure_source_files(source_files),
-         {:ok, functions} <- Crap.Scanner.analyze(root),
+         {:ok, functions} <- ExCrap.Scanner.analyze(root),
          :ok <- ensure_analyzable_functions(functions),
          {:ok, coverdata_path} <- coverdata_path(opts, root),
-         {:ok, coverage} <- Crap.Coverage.from_coverdata(coverdata_path) do
-      rows = Crap.Report.rows(functions, coverage, root)
-      Mix.shell().info(Crap.Report.render(rows))
+         {:ok, coverage} <- ExCrap.Coverage.from_coverdata(coverdata_path) do
+      rows = ExCrap.Report.rows(functions, coverage, root)
+      Mix.shell().info(ExCrap.Report.render(rows))
       enforce_threshold!(rows, max_score)
     else
       {:no_source_files, pattern} ->
@@ -136,7 +136,7 @@ defmodule Mix.Tasks.Crap do
   end
 
   defp enforce_threshold!(rows, max_score) do
-    failures = Crap.Report.failures(rows, max_score)
+    failures = ExCrap.Report.failures(rows, max_score)
 
     unless Enum.all?(failures, fn {_key, rows} -> rows == [] end) do
       Mix.raise(failure_message(failures, max_score))

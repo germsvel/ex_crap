@@ -1,4 +1,4 @@
-defmodule Crap.ScannerTest do
+defmodule ExCrap.ScannerTest do
   use ExUnit.Case, async: false
 
   describe "source_files/1" do
@@ -10,7 +10,7 @@ defmodule Crap.ScannerTest do
       write_source(root, "test/a_test.exs", "defmodule ATest do\nend\n")
       write_source(root, "apps/child/lib/child.ex", "defmodule Child do\nend\n")
 
-      assert Crap.Scanner.source_files(root) == [
+      assert ExCrap.Scanner.source_files(root) == [
                Path.join(root, "lib/a.ex"),
                Path.join(root, "lib/b.ex")
              ]
@@ -23,7 +23,7 @@ defmodule Crap.ScannerTest do
         write_source(root, "lib/example.ex", "defmodule Example do\n  def ok, do: :ok\nend\n")
 
       File.cd!(root, fn ->
-        assert [file] = Crap.Scanner.source_files()
+        assert [file] = ExCrap.Scanner.source_files()
         assert String.ends_with?(file, "/lib/example.ex")
         assert File.read!(file) == File.read!(path)
       end)
@@ -51,7 +51,7 @@ defmodule Crap.ScannerTest do
                   arity: 1,
                   complexity: 2
                 }
-              ]} = Crap.Scanner.analyze(root)
+              ]} = ExCrap.Scanner.analyze(root)
 
       assert file == Path.join(root, "lib/example.ex")
     end
@@ -72,7 +72,7 @@ defmodule Crap.ScannerTest do
                     arity: 0,
                     complexity: 1
                   }
-                ]} = Crap.Scanner.analyze()
+                ]} = ExCrap.Scanner.analyze()
 
         assert String.ends_with?(file, "/lib/example.ex")
         assert File.read!(file) == File.read!(path)
@@ -82,7 +82,7 @@ defmodule Crap.ScannerTest do
     test "returns an empty result when no root lib source files exist" do
       root = tmp_dir("scanner-empty")
 
-      assert Crap.Scanner.analyze(root) == {:ok, []}
+      assert ExCrap.Scanner.analyze(root) == {:ok, []}
     end
 
     test "returns an empty result when source files have no analyzable function bodies" do
@@ -94,7 +94,7 @@ defmodule Crap.ScannerTest do
       end
       """)
 
-      assert Crap.Scanner.analyze(root) == {:ok, []}
+      assert ExCrap.Scanner.analyze(root) == {:ok, []}
     end
 
     test "continues analyzing files after valid files with no analyzable function bodies" do
@@ -121,7 +121,7 @@ defmodule Crap.ScannerTest do
                   arity: 0,
                   complexity: 1
                 }
-              ]} = Crap.Scanner.analyze(root)
+              ]} = ExCrap.Scanner.analyze(root)
 
       assert file == Path.join(root, "lib/b_example.ex")
     end
@@ -149,14 +149,14 @@ defmodule Crap.ScannerTest do
                   arity: 3,
                   complexity: 2
                 }
-              ]} = Crap.Scanner.analyze(root)
+              ]} = ExCrap.Scanner.analyze(root)
     end
 
     test "returns a file-specific error for invalid source" do
       root = tmp_dir("scanner-invalid-source")
       path = write_source(root, "lib/bad.ex", "defmodule")
 
-      assert Crap.Scanner.analyze(root) == {:error, {path, :invalid_source}}
+      assert ExCrap.Scanner.analyze(root) == {:error, {path, :invalid_source}}
     end
   end
 

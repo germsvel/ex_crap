@@ -1,4 +1,4 @@
-defmodule Crap.Complexity do
+defmodule ExCrap.Complexity do
   @moduledoc """
   Parses Elixir source and returns sprint-local cyclomatic complexity results for
   supported executable containers, including modules and protocol implementations.
