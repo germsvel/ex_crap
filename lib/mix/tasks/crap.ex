@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Crap do
   use Mix.Task
+  use Boundary, classify_to: ExCrap.Mix
 
   @shortdoc "Print CRAP scores for project source"
 

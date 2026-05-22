@@ -1,7 +1,11 @@
 defmodule ExCrap.Report do
+  use Boundary, deps: [ExCrap.Score]
+
   @moduledoc """
   Builds CRAP report rows from complexity and coverage data.
   """
+
+  alias ExCrap.Score
 
   @doc """
   Joins complexity results with coverage by `{module, function, arity}`.
@@ -55,7 +59,7 @@ defmodule ExCrap.Report do
   end
 
   defp put_score(row, coverage_percent) do
-    case ExCrap.score(row.complexity, coverage_percent) do
+    case Score.score(row.complexity, coverage_percent) do
       {:ok, score} ->
         row
         |> Map.put(:coverage_percent, coverage_percent)

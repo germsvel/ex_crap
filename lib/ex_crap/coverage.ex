@@ -1,4 +1,6 @@
 defmodule ExCrap.Coverage do
+  use Boundary
+
   @moduledoc """
   Imports Erlang/Mix coverdata and exposes function coverage percentages.
   """

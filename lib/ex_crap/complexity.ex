@@ -1,4 +1,6 @@
 defmodule ExCrap.Complexity do
+  use Boundary
+
   @moduledoc """
   Parses Elixir source and returns sprint-local cyclomatic complexity results for
   supported executable containers, including modules and protocol implementations.
