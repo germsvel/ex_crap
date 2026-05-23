@@ -108,15 +108,34 @@ defmodule ExCrap.Report do
       ]
       |> Enum.join(" | ")
 
-    if passing_scored?(row, max_score), do: green(line), else: line
+    cond do
+      passing_scored?(row, max_score) -> green(line)
+      failing?(row, max_score) -> red(line)
+      true -> line
+    end
   end
 
   defp success_line(rows, max_score) do
     rows
-    |> Enum.filter(&passing_scored?(&1, max_score))
-    |> Enum.map_join(fn _row -> "✓" end)
-    |> green()
+    |> Enum.map(&progress_marker(&1, max_score))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.chunk_by(fn {color, _marker} -> color end)
+    |> Enum.map_join(fn markers ->
+      {color, _marker} = hd(markers)
+      color(Enum.map_join(markers, fn {_color, marker} -> marker end), color)
+    end)
   end
+
+  defp progress_marker(row, max_score) do
+    cond do
+      passing_scored?(row, max_score) -> {:green, "✓"}
+      failing?(row, max_score) -> {:red, "x"}
+      true -> nil
+    end
+  end
+
+  defp failing?(%{status: {:error, _reason}}, _max_score), do: true
+  defp failing?(row, max_score), do: high_score?(row, max_score)
 
   defp passing_scored?(%{status: :scored, score: score}, max_score) when is_number(score),
     do: score <= max_score
@@ -125,6 +144,12 @@ defmodule ExCrap.Report do
 
   defp green(line),
     do: IO.ANSI.format_fragment([:green, line, :reset], true) |> IO.iodata_to_binary()
+
+  defp red(line),
+    do: IO.ANSI.format_fragment([:red, line, :reset], true) |> IO.iodata_to_binary()
+
+  defp color(line, :green), do: green(line)
+  defp color(line, :red), do: red(line)
 
   defp render_summary(rows) do
     files = rows |> Enum.map(& &1.file) |> Enum.uniq() |> length()

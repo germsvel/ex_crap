@@ -236,6 +236,9 @@ defmodule Mix.Tasks.CrapTest do
           refute output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
           refute output =~ "lib/example.ex | ExCrap | score/2"
           refute output =~ "lib/example.ex | ExCrap | score/2 | 1 | 100.00% | 1.00 | scored"
+
+          progress_line = output |> String.split("\n", trim: true) |> hd()
+          assert progress_line == "\e[31mx\e[0m"
         end)
       end)
     end
@@ -267,6 +270,7 @@ defmodule Mix.Tasks.CrapTest do
 
           assert output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
           assert output =~ "lib/example.ex | ExCrap | score/2"
+          assert output =~ "\e[31mlib/example.ex | ExCrap | score/2"
           assert output =~ "Summary:"
         end)
       end)

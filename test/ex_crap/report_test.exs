@@ -182,6 +182,93 @@ defmodule ExCrap.ReportTest do
       assert output == ExCrap.Report.render(rows, verbose: true)
     end
 
+    test "renders failures as red x markers in compact output" do
+      rows = [
+        %{
+          file: "/project/lib/risky.ex",
+          module: Example,
+          function: :risky,
+          arity: 0,
+          complexity: 10,
+          coverage_percent: 0,
+          score: 110.0,
+          status: :scored
+        },
+        %{
+          file: "/project/lib/safe.ex",
+          module: Example,
+          function: :safe,
+          arity: 0,
+          complexity: 1,
+          coverage_percent: 100,
+          score: 1.0,
+          status: :scored
+        },
+        %{
+          file: "/project/lib/error.ex",
+          module: Example,
+          function: :bad,
+          arity: 0,
+          complexity: 1,
+          coverage_percent: nil,
+          score: nil,
+          status: {:error, :invalid_coverage}
+        }
+      ]
+
+      output = ExCrap.Report.render(rows, max_score: 30, verbose: false)
+      progress_line = output |> String.split("\n", trim: true) |> hd()
+
+      assert progress_line == "\e[31mx\e[0m\e[32m✓\e[0m\e[31mx\e[0m"
+      assert output =~ "Summary: files=3 functions=3 scored=2 worst_score=110.00"
+    end
+
+    test "renders failures as red rows when verbose" do
+      rows = [
+        %{
+          file: "/project/lib/risky.ex",
+          module: Example,
+          function: :risky,
+          arity: 0,
+          complexity: 10,
+          coverage_percent: 0,
+          score: 110.0,
+          status: :scored
+        },
+        %{
+          file: "/project/lib/safe.ex",
+          module: Example,
+          function: :safe,
+          arity: 0,
+          complexity: 1,
+          coverage_percent: 100,
+          score: 1.0,
+          status: :scored
+        },
+        %{
+          file: "/project/lib/error.ex",
+          module: Example,
+          function: :bad,
+          arity: 0,
+          complexity: 1,
+          coverage_percent: nil,
+          score: nil,
+          status: {:error, :invalid_coverage}
+        }
+      ]
+
+      output = ExCrap.Report.render(rows, max_score: 30, verbose: true)
+
+      assert output =~
+               "\e[31m/project/lib/risky.ex | Example | risky/0 | 10 | 0.00% | 110.00 | scored\e[0m"
+
+      assert output =~
+               "\e[32m/project/lib/safe.ex | Example | safe/0 | 1 | 100.00% | 1.00 | scored\e[0m"
+
+      assert output =~
+               "\e[31m/project/lib/error.ex | Example | bad/0 | 1 | missing | - | error: invalid_coverage\e[0m"
+    end
+
     test "renders high scores without raising" do
       rows = [
         %{
