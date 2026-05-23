@@ -64,6 +64,24 @@ defmodule CrapTest do
       assert ExCrap.analyze_string(source, %{}) == {:ok, []}
     end
 
+    test "accepts default-argument function heads before guarded clauses" do
+      source = ~S"""
+      defmodule Concat do
+        def join(a, b, sep \\ " ")
+
+        def join(a, b, _sep) when b == "" do
+          a
+        end
+
+        def join(a, b, sep) do
+          a <> sep <> b
+        end
+      end
+      """
+
+      assert {:ok, _results} = ExCrap.analyze_string(source, %{})
+    end
+
     test "still returns invalid_source for invalid source" do
       assert ExCrap.analyze_string("defmodule", %{}) == {:error, :invalid_source}
     end
