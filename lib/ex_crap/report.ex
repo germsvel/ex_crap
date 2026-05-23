@@ -37,13 +37,22 @@ defmodule ExCrap.Report do
   end
 
   @doc """
-  Renders report rows as a deterministic plain text table.
+  Renders report rows as deterministic text output.
   """
-  def render(rows) when is_list(rows) do
+  def render(rows, opts \\ []) when is_list(rows) and is_list(opts) do
     sorted_rows = Enum.sort_by(rows, &sort_key/1)
+    max_score = Keyword.get(opts, :max_score, 30.0)
+    verbose = Keyword.get(opts, :verbose, true)
 
-    (["File | Module | Function | Complexity | Coverage | CRAP | Status"] ++
-       Enum.map(sorted_rows, &render_row/1) ++ [render_summary(rows)])
+    rows_output =
+      if verbose do
+        ["File | Module | Function | Complexity | Coverage | CRAP | Status"] ++
+          Enum.map(sorted_rows, &render_row(&1, max_score))
+      else
+        [success_line(sorted_rows, max_score)]
+      end
+
+    (rows_output ++ [render_summary(rows)])
     |> Enum.join("\n")
     |> Kernel.<>("\n")
   end
@@ -86,18 +95,36 @@ defmodule ExCrap.Report do
   defp score_sort(nil), do: {1, 0}
   defp score_sort(score), do: {0, -score}
 
-  defp render_row(row) do
-    [
-      row.file,
-      inspect(row.module),
-      "#{row.function}/#{row.arity}",
-      to_string(row.complexity),
-      format_coverage(row.coverage_percent),
-      format_score(row.score),
-      format_status(row.status)
-    ]
-    |> Enum.join(" | ")
+  defp render_row(row, max_score) do
+    line =
+      [
+        row.file,
+        inspect(row.module),
+        "#{row.function}/#{row.arity}",
+        to_string(row.complexity),
+        format_coverage(row.coverage_percent),
+        format_score(row.score),
+        format_status(row.status)
+      ]
+      |> Enum.join(" | ")
+
+    if passing_scored?(row, max_score), do: green(line), else: line
   end
+
+  defp success_line(rows, max_score) do
+    rows
+    |> Enum.filter(&passing_scored?(&1, max_score))
+    |> Enum.map_join(fn _row -> "✓" end)
+    |> green()
+  end
+
+  defp passing_scored?(%{status: :scored, score: score}, max_score) when is_number(score),
+    do: score <= max_score
+
+  defp passing_scored?(_row, _max_score), do: false
+
+  defp green(line),
+    do: IO.ANSI.format_fragment([:green, line, :reset], true) |> IO.iodata_to_binary()
 
   defp render_summary(rows) do
     files = rows |> Enum.map(& &1.file) |> Enum.uniq() |> length()

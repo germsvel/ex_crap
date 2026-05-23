@@ -45,7 +45,8 @@ defmodule ExCrap.ElixirSamplesTest do
 
         assert Enum.all?(results, fn result ->
                  is_integer(result.complexity) and result.complexity > 0
-               end), path
+               end),
+               path
       end
     end
 

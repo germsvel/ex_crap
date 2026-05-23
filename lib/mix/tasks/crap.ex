@@ -13,6 +13,7 @@ defmodule Mix.Tasks.Crap do
       mix crap
       mix crap --coverdata path/to/file.coverdata
       mix crap --max-score 30
+      mix crap --verbose
 
   Coverage workflow: `mix crap` consumes persisted Mix/Erlang coverage data.
   The default path is `cover/default.coverdata`, produced by
@@ -25,13 +26,14 @@ defmodule Mix.Tasks.Crap do
   The default maximum CRAP score is 30 (default: 30). Use
   `--max-score N` to override it. The task fails when any function exceeds the
   threshold or has score calculation errors. Missing function coverage is scored as 0%.
-  Missing coverdata input is a usage error when analyzable functions exist.
+  Missing coverdata input is a usage error when analyzable functions exist. Use
+  `--verbose` to print the full scored table on passing runs.
   """
 
   @impl Mix.Task
   def run(args) do
     case OptionParser.parse(args,
-           strict: [coverdata: :string, max_score: :string, help: :boolean]
+           strict: [coverdata: :string, max_score: :string, help: :boolean, verbose: :boolean]
          ) do
       {opts, [], []} ->
         if opts[:help] do
@@ -62,7 +64,7 @@ defmodule Mix.Tasks.Crap do
          {:ok, coverdata_path} <- coverdata_path(opts, root),
          {:ok, coverage} <- ExCrap.Coverage.from_coverdata(coverdata_path) do
       rows = ExCrap.Report.rows(functions, coverage, root)
-      Mix.shell().info(ExCrap.Report.render(rows))
+      Mix.shell().info(ExCrap.Report.render(rows, max_score: max_score, verbose: opts[:verbose]))
       enforce_threshold!(rows, max_score)
     else
       {:no_source_files, pattern} ->

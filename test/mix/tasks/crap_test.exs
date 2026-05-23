@@ -11,6 +11,7 @@ defmodule Mix.Tasks.CrapTest do
       assert Mix.Tasks.Crap.moduledoc() =~ "mix test --cover --export-coverage default"
       assert Mix.Tasks.Crap.moduledoc() =~ "--coverdata"
       assert Mix.Tasks.Crap.moduledoc() =~ "--max-score"
+      assert Mix.Tasks.Crap.moduledoc() =~ "--verbose"
       assert Mix.Tasks.Crap.moduledoc() =~ "default: 30"
       assert Mix.Tasks.Crap.moduledoc() =~ "lib/**/*.ex"
 
@@ -33,6 +34,7 @@ defmodule Mix.Tasks.CrapTest do
       assert output =~ "mix crap --max-score 30"
       assert output =~ "--coverdata"
       assert output =~ "--max-score"
+      assert output =~ "--verbose"
       assert output =~ "lib/**/*.ex"
     end
 
@@ -158,7 +160,7 @@ defmodule Mix.Tasks.CrapTest do
       end)
     end
 
-    test "prints a CRAP report from explicit coverdata when rows pass the threshold" do
+    test "prints concise success output from explicit coverdata when rows pass the threshold" do
       with_coverdata(fn coverdata_path ->
         in_tmp("crap-explicit-coverdata", fn ->
           File.mkdir_p!("lib")
@@ -171,14 +173,42 @@ defmodule Mix.Tasks.CrapTest do
           output = capture_io(fn -> Mix.Tasks.Crap.run(["--coverdata", coverdata_path]) end)
 
           refute output =~ "Analysis includes data"
+          assert output =~ "\e[32m✓\e[0m\nSummary:"
+          assert output =~ "Summary:"
+          refute output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
+          refute output =~ "lib/example.ex | ExCrap | score/2"
+          refute output =~ "lib/example.ex | ExCrap | score/2 | 1 | 100.00% | 1.00 | scored"
+
+          progress_line = output |> String.split("\n", trim: true) |> hd()
+          assert progress_line == "\e[32m✓\e[0m"
+          refute progress_line =~ "score="
+        end)
+      end)
+    end
+
+    test "prints a full colored CRAP report from explicit coverdata when verbose" do
+      with_coverdata(fn coverdata_path ->
+        in_tmp("crap-explicit-coverdata-verbose", fn ->
+          File.mkdir_p!("lib")
+
+          File.write!(
+            "lib/example.ex",
+            "defmodule ExCrap do\n  def score(complexity, coverage), do: {complexity, coverage}\nend\n"
+          )
+
+          output =
+            capture_io(fn -> Mix.Tasks.Crap.run(["--coverdata", coverdata_path, "--verbose"]) end)
+
           assert output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
           assert output =~ "lib/example.ex | ExCrap | score/2"
+          assert output =~ "Summary:"
+          assert output =~ "\e[32mlib/example.ex | ExCrap | score/2"
           assert output =~ "scored"
         end)
       end)
     end
 
-    test "raises with high score summary after printing the report" do
+    test "raises with high score summary after printing the summary" do
       with_coverdata(fn coverdata_path ->
         in_tmp("crap-high-score", fn ->
           File.mkdir_p!("lib")
@@ -202,8 +232,42 @@ defmodule Mix.Tasks.CrapTest do
                            end
             end)
 
+          assert output =~ "Summary:"
+          refute output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
+          refute output =~ "lib/example.ex | ExCrap | score/2"
+          refute output =~ "lib/example.ex | ExCrap | score/2 | 1 | 100.00% | 1.00 | scored"
+        end)
+      end)
+    end
+
+    test "prints a full colored CRAP report before raising when verbose" do
+      with_coverdata(fn coverdata_path ->
+        in_tmp("crap-high-score-verbose", fn ->
+          File.mkdir_p!("lib")
+
+          File.write!(
+            "lib/example.ex",
+            "defmodule ExCrap do\n  def score(complexity, coverage), do: {complexity, coverage}\nend\n"
+          )
+
+          output =
+            capture_io(fn ->
+              assert_raise Mix.Error,
+                           ~r/CRAP threshold failed: max_score=0\.01.*High scores: 1\n  lib\/example\.ex ExCrap\.score\/2 score=\d+\.\d{2}/s,
+                           fn ->
+                             Mix.Tasks.Crap.run([
+                               "--coverdata",
+                               coverdata_path,
+                               "--max-score",
+                               "0.01",
+                               "--verbose"
+                             ])
+                           end
+            end)
+
           assert output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
           assert output =~ "lib/example.ex | ExCrap | score/2"
+          assert output =~ "Summary:"
         end)
       end)
     end
@@ -284,8 +348,14 @@ defmodule Mix.Tasks.CrapTest do
               ])
             end)
 
-          assert output =~ "lib/example.ex | Example | ok/0 | 1 | 0.00% | 2.00 | scored"
+          assert output =~ "\e[32m✓\e[0m\nSummary:"
+          assert output =~ "Summary:"
+          refute output =~ "lib/example.ex | Example | ok/0 | 1 | 0.00% | 2.00 | scored"
           refute output =~ "Missing coverage"
+
+          progress_line = output |> String.split("\n", trim: true) |> hd()
+          assert progress_line == "\e[32m✓\e[0m"
+          refute progress_line =~ "score="
         end)
       end)
     end
@@ -326,7 +396,8 @@ defmodule Mix.Tasks.CrapTest do
                            end
             end)
 
-          assert output =~ "lib/example.ex | Example | risky/4 | 6 | 0.00% | 42.00 | scored"
+          assert output =~ "Summary:"
+          refute output =~ "lib/example.ex | Example | risky/4 | 6 | 0.00% | 42.00 | scored"
           refute output =~ "Missing coverage"
         end)
       end)

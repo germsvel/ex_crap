@@ -100,7 +100,7 @@ defmodule ExCrap.ReportTest do
   end
 
   describe "render/1" do
-    test "renders sorted rows and a compact summary" do
+    test "renders passing rows as a green checkmark progress line and a compact summary" do
       rows = [
         %{
           file: "/project/lib/a.ex",
@@ -134,17 +134,52 @@ defmodule ExCrap.ReportTest do
         }
       ]
 
-      output = ExCrap.Report.render(rows)
+      output = ExCrap.Report.render(rows, verbose: false)
 
-      assert output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
-      assert output =~ "/project/lib/b.ex | Example | risky/1 | 4 | 0.00% | 20.00 | scored"
-
-      assert output =~ "/project/lib/c.ex | Example | missing/0 | 2 | 0.00% | 6.00 | scored"
+      refute output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
+      assert output =~ "\e[32m✓✓✓\e[0m\nSummary:"
+      refute output =~ "/project/lib/a.ex"
+      refute output =~ "/project/lib/b.ex"
+      refute output =~ "/project/lib/c.ex"
 
       assert output =~
                "Summary: files=3 functions=3 scored=3 worst_score=20.00"
 
-      assert :binary.match(output, "risky/1") < :binary.match(output, "small/0")
+      progress_line = output |> String.split("\n", trim: true) |> hd()
+      assert progress_line == "\e[32m✓✓✓\e[0m"
+      refute progress_line =~ "score="
+    end
+
+    test "renders a full colored table when verbose" do
+      rows = [
+        %{
+          file: "/project/lib/a.ex",
+          module: Example,
+          function: :small,
+          arity: 0,
+          complexity: 1,
+          coverage_percent: 100,
+          score: 1.0,
+          status: :scored
+        },
+        %{
+          file: "/project/lib/b.ex",
+          module: Example,
+          function: :risky,
+          arity: 1,
+          complexity: 4,
+          coverage_percent: 0,
+          score: 20.0,
+          status: :scored
+        }
+      ]
+
+      output = ExCrap.Report.render(rows)
+
+      assert output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
+      assert output =~ "\e[32m/project/lib/b.ex | Example | risky/1 | 4 | 0.00% | 20.00 | scored"
+      assert output =~ "Summary: files=2 functions=2 scored=2 worst_score=20.00"
+      assert output == ExCrap.Report.render(rows, verbose: true)
     end
 
     test "renders high scores without raising" do
@@ -161,7 +196,7 @@ defmodule ExCrap.ReportTest do
         }
       ]
 
-      assert ExCrap.Report.render(rows) =~ "110.00"
+      assert ExCrap.Report.render(rows, verbose: true) =~ "110.00"
     end
   end
 
