@@ -150,10 +150,13 @@ defmodule Mix.Tasks.Crap do
     [
       "CRAP threshold failed: max_score=#{format_number(max_score)}",
       failure_section("High scores", failures.high_scores, &high_score_line/1),
-      failure_section("Score errors", failures.score_errors, &status_line/1)
+      failure_section("Score calculation errors", failures.score_errors, &status_line/1)
     ]
+    |> Enum.reject(&is_nil/1)
     |> Enum.join("\n")
   end
+
+  defp failure_section(_title, [], _line_fun), do: nil
 
   defp failure_section(title, rows, line_fun) do
     lines = Enum.map(rows, line_fun)

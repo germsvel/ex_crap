@@ -220,16 +220,23 @@ defmodule Mix.Tasks.CrapTest do
 
           output =
             capture_io(fn ->
-              assert_raise Mix.Error,
-                           ~r/CRAP threshold failed: max_score=0\.01.*High scores: 1\n  lib\/example\.ex ExCrap\.score\/2 score=\d+\.\d{2}/s,
-                           fn ->
-                             Mix.Tasks.Crap.run([
-                               "--coverdata",
-                               coverdata_path,
-                               "--max-score",
-                               "0.01"
-                             ])
-                           end
+              error =
+                assert_raise Mix.Error, fn ->
+                  Mix.Tasks.Crap.run([
+                    "--coverdata",
+                    coverdata_path,
+                    "--max-score",
+                    "0.01"
+                  ])
+                end
+
+              message = Exception.message(error)
+
+              assert message =~
+                       ~r/CRAP threshold failed: max_score=0\.01.*High scores: 1\n  lib\/example\.ex ExCrap\.score\/2 score=\d+\.\d{2}/s
+
+              refute message =~ "Score errors"
+              refute message =~ "Score calculation errors"
             end)
 
           assert output =~ "Summary:"
@@ -255,17 +262,24 @@ defmodule Mix.Tasks.CrapTest do
 
           output =
             capture_io(fn ->
-              assert_raise Mix.Error,
-                           ~r/CRAP threshold failed: max_score=0\.01.*High scores: 1\n  lib\/example\.ex ExCrap\.score\/2 score=\d+\.\d{2}/s,
-                           fn ->
-                             Mix.Tasks.Crap.run([
-                               "--coverdata",
-                               coverdata_path,
-                               "--max-score",
-                               "0.01",
-                               "--verbose"
-                             ])
-                           end
+              error =
+                assert_raise Mix.Error, fn ->
+                  Mix.Tasks.Crap.run([
+                    "--coverdata",
+                    coverdata_path,
+                    "--max-score",
+                    "0.01",
+                    "--verbose"
+                  ])
+                end
+
+              message = Exception.message(error)
+
+              assert message =~
+                       ~r/CRAP threshold failed: max_score=0\.01.*High scores: 1\n  lib\/example\.ex ExCrap\.score\/2 score=\d+\.\d{2}/s
+
+              refute message =~ "Score errors"
+              refute message =~ "Score calculation errors"
             end)
 
           assert output =~ "File | Module | Function | Complexity | Coverage | CRAP | Status"
