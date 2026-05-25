@@ -5,7 +5,7 @@ defmodule ExCrap.MixProject do
     [
       app: :ex_crap,
       version: "0.1.0",
-      elixir: "~> 1.15",
+      elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
       compilers: [:boundary] ++ Mix.compilers(),
       aliases: [
@@ -13,6 +13,7 @@ defmodule ExCrap.MixProject do
         precommit: [
           "format",
           "test --cover --export-coverage default",
+          "test.coverage",
           "crap",
           "muex"
         ]
