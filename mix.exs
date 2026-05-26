@@ -7,6 +7,7 @@ defmodule ExCrap.MixProject do
       version: "0.1.0",
       elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
+      test_ignore_filters: [~r{^test/fixtures/}],
       compilers: [:boundary] ++ Mix.compilers(),
       aliases: [
         doc: "docs",

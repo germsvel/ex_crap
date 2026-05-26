@@ -1,7 +1,7 @@
 defmodule ExCrap.ElixirSamplesTest do
   use ExUnit.Case, async: true
 
-  @samples_root Path.expand("../../docs/elixir_samples", __DIR__)
+  @samples_root Path.expand("../fixtures/elixir_samples", __DIR__)
 
   @expected_sample_paths [
     "01_basic_modules/simple_math.ex",
@@ -32,6 +32,10 @@ defmodule ExCrap.ElixirSamplesTest do
   }
 
   describe "canonical sample fixtures" do
+    test "canonical samples live with test fixtures" do
+      assert @samples_root == Path.expand("../fixtures/elixir_samples", __DIR__)
+    end
+
     test "discovers only canonical samples" do
       assert canonical_sample_paths() == absolute_expected_sample_paths()
       assert Enum.sort(Map.keys(@expected_summaries)) == @expected_sample_paths
