@@ -624,6 +624,28 @@ defmodule ExCrap.ComplexityTest do
              ]
     end
 
+    test "analyzes defimpl blocks for nil targets" do
+      source = """
+      defmodule Example do
+        defimpl String.Chars, for: nil do
+          def to_string(_), do: :ok
+        end
+      end
+      """
+
+      assert ExCrap.Complexity.from_string(source) ==
+               {:ok,
+                [
+                  %{
+                    module: String.Chars,
+                    function: :to_string,
+                    arity: 1,
+                    line: 3,
+                    complexity: 1
+                  }
+                ]}
+    end
+
     test "accepts defimpl Module.concat protocol and target forms" do
       source = """
       defimpl Module.concat(String, Chars), for: Module.concat(Example, Target) do
@@ -875,6 +897,60 @@ defmodule ExCrap.ComplexityTest do
               ]} = ExCrap.Complexity.from_string(source)
     end
 
+    test "resolves grouped local alias declarations in nested explicit defimpl blocks" do
+      source = """
+      defmodule GeneratedGroupedAlias.Scope do
+        alias Example.{One, Two}
+
+        defimpl String.Chars, for: One do
+          def to_string(value), do: inspect(value)
+        end
+      end
+      """
+
+      assert ExCrap.Complexity.from_string(source) ==
+               {:ok,
+                [
+                  %{
+                    module: String.Chars.Example.One,
+                    function: :to_string,
+                    arity: 1,
+                    line: 5,
+                    complexity: 1
+                  }
+                ]}
+    end
+
+    test "does not resolve later local target declarations retroactively" do
+      source = """
+      defmodule GeneratedLocalOrder do
+        defprotocol P do
+          def to_string(value)
+        end
+
+        defimpl P, for: S do
+          def to_string(value), do: inspect(value)
+        end
+
+        defmodule S do
+          defstruct []
+        end
+      end
+      """
+
+      assert ExCrap.Complexity.from_string(source) ==
+               {:ok,
+                [
+                  %{
+                    module: GeneratedLocalOrder.P.S,
+                    function: :to_string,
+                    arity: 1,
+                    line: 7,
+                    complexity: 1
+                  }
+                ]}
+    end
+
     test "allows default-argument function heads before implementation clauses" do
       source = ~S"""
       defmodule Example do
@@ -1044,6 +1120,31 @@ defmodule ExCrap.ComplexityTest do
 
     test "returns an error tuple for invalid Elixir source" do
       assert {:error, :invalid_source} = ExCrap.Complexity.from_string("defmodule")
+    end
+  end
+
+  describe "Elixir syntax assumptions" do
+    test "rescue guards are invalid source" do
+      source = """
+      defmodule GeneratedInvalidRescueGuard do
+        def run do
+          try do
+            raise "x"
+          rescue
+            error in RuntimeError when is_exception(error) -> :ok
+          end
+        end
+      end
+      """
+
+      compiler_output =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          assert_raise CompileError, fn ->
+            Code.compile_string(source)
+          end
+        end)
+
+      assert compiler_output =~ ~s(invalid "rescue" clause)
     end
   end
 
