@@ -55,73 +55,69 @@ defmodule Mix.Tasks.Crap do
 
   defp run_report(opts) do
     root = File.cwd!()
-    source_files = ExCrap.Scanner.source_files(root)
 
     with {:ok, max_score} <- max_score(opts),
-         :ok <- ensure_source_files(source_files),
-         {:ok, functions} <- ExCrap.Scanner.analyze(root),
-         :ok <- ensure_analyzable_functions(functions),
-         {:ok, coverdata_path} <- coverdata_path(opts, root),
-         {:ok, coverage} <- ExCrap.Coverage.from_coverdata(coverdata_path) do
-      rows = ExCrap.Report.rows(functions, coverage, root)
-      Mix.shell().info(ExCrap.Report.render(rows, max_score: max_score, verbose: opts[:verbose]))
-      enforce_threshold!(rows, max_score)
+         {:ok, coverdata_path, coverdata_source} <- coverdata_path(opts, root) do
+      case ExCrap.project_report(root, coverdata_path) do
+        {:ok, rows} ->
+          Mix.shell().info(ExCrap.render_report(rows, max_score: max_score, verbose: opts[:verbose]))
+          enforce_threshold!(rows, max_score)
+
+        error ->
+          handle_report_error!(error, root, coverdata_source)
+      end
     else
-      {:no_source_files, pattern} ->
-        Mix.shell().info("No root #{pattern} files found.")
-
-      {:no_analyzable_functions, pattern} ->
-        Mix.shell().info("No analyzable function bodies found in root #{pattern} files.")
-
-      {:error, :no_coverdata} ->
-        Mix.shell().info("""
-        No coverage data found at cover/default.coverdata.
-
-        Run persisted coverage first:
-            mix test --cover --export-coverage default
-
-        Then run:
-            mix crap
-
-        Plain mix test --cover prints a coverage report, but does not leave importable coverage data for a later mix crap run.
-        If coverage data is elsewhere, run: mix crap --coverdata path/to/file.coverdata
-        """)
-
-        Mix.raise("Coverage data is missing: cover/default.coverdata")
-
-      {:error, {:coverdata_unreadable, path}} ->
-        Mix.raise("Coverage data is unreadable: #{path}")
-
       {:error, {:invalid_max_score, value}} ->
         Mix.raise("Invalid --max-score: #{value}. Expected a positive number.")
-
-      {:error, {path, reason}} ->
-        Mix.raise(
-          "Unable to analyze source file #{Path.relative_to(path, root)}: #{inspect(reason)}"
-        )
-
-      {:error, reason} ->
-        Mix.raise("Unable to calculate CRAP report: #{inspect(reason)}")
     end
   end
 
-  defp ensure_source_files([]), do: {:no_source_files, "lib/**/*.ex"}
-  defp ensure_source_files(_source_files), do: :ok
+  defp handle_report_error!({:no_source_files, pattern}, _root, _coverdata_source) do
+    Mix.shell().info("No root #{pattern} files found.")
+  end
 
-  defp ensure_analyzable_functions([]), do: {:no_analyzable_functions, "lib/**/*.ex"}
-  defp ensure_analyzable_functions(_functions), do: :ok
+  defp handle_report_error!({:no_analyzable_functions, pattern}, _root, _coverdata_source) do
+    Mix.shell().info("No analyzable function bodies found in root #{pattern} files.")
+  end
+
+  defp handle_report_error!({:error, {:coverdata_unreadable, path}}, root, :default) do
+    Mix.shell().info("""
+    No coverage data found at cover/default.coverdata.
+
+    Run persisted coverage first:
+        mix test --cover --export-coverage default
+
+    Then run:
+        mix crap
+
+    Plain mix test --cover prints a coverage report, but does not leave importable coverage data for a later mix crap run.
+    If coverage data is elsewhere, run: mix crap --coverdata path/to/file.coverdata
+    """)
+
+    Mix.raise("Coverage data is missing: #{Path.relative_to(path, root)}")
+  end
+
+  defp handle_report_error!({:error, {:coverdata_unreadable, path}}, _root, _coverdata_source) do
+    Mix.raise("Coverage data is unreadable: #{path}")
+  end
+
+  defp handle_report_error!({:error, {path, reason}}, root, _coverdata_source) do
+    Mix.raise("Unable to analyze source file #{Path.relative_to(path, root)}: #{inspect(reason)}")
+  end
+
+  defp handle_report_error!({:error, reason}, _root, _coverdata_source) do
+    Mix.raise("Unable to calculate CRAP report: #{inspect(reason)}")
+  end
 
   defp coverdata_path(opts, root) do
     case Keyword.fetch(opts, :coverdata) do
-      {:ok, path} -> {:ok, Path.expand(path, root)}
+      {:ok, path} -> {:ok, Path.expand(path, root), :explicit}
       :error -> default_coverdata_path(root)
     end
   end
 
   defp default_coverdata_path(root) do
-    path = Path.join(root, "cover/default.coverdata")
-
-    if File.regular?(path), do: {:ok, path}, else: {:error, :no_coverdata}
+    {:ok, Path.join(root, "cover/default.coverdata"), :default}
   end
 
   defp max_score(opts) do
@@ -139,7 +135,7 @@ defmodule Mix.Tasks.Crap do
   end
 
   defp enforce_threshold!(rows, max_score) do
-    failures = ExCrap.Report.failures(rows, max_score)
+    failures = ExCrap.failures(rows, max_score)
 
     unless Enum.all?(failures, fn {_key, rows} -> rows == [] end) do
       Mix.raise(failure_message(failures, max_score))

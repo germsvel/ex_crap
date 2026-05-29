@@ -1,5 +1,5 @@
 defmodule ExCrap.Mix do
-  use Boundary, deps: [ExCrap.Scanner, ExCrap.Coverage, ExCrap.Report]
+  use Boundary, deps: [ExCrap]
 
   @moduledoc false
 end

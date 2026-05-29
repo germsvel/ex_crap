@@ -13,6 +13,9 @@ defmodule ExCrap do
   """
 
   alias ExCrap.Complexity
+  alias ExCrap.Coverage
+  alias ExCrap.Report
+  alias ExCrap.Scanner
   alias ExCrap.Score
 
   @doc """
@@ -29,6 +32,37 @@ defmodule ExCrap do
   end
 
   def analyze_file(_path, _coverage_by_function), do: {:error, :invalid_coverage_map}
+
+  @doc """
+  Scans root project source files, imports coverdata, and builds CRAP report rows.
+
+  The scan is intentionally limited to root `lib/**/*.ex` files. Valid projects
+  with no analyzable function or macro bodies return `{:no_analyzable_functions, "lib/**/*.ex"}`.
+  """
+  def project_report(root, coverdata_path) when is_binary(root) and is_binary(coverdata_path) do
+    source_files = Scanner.source_files(root)
+
+    with :ok <- ensure_source_files(source_files),
+         {:ok, functions} <- Scanner.analyze(root),
+         :ok <- ensure_analyzable_functions(functions),
+         {:ok, coverage} <- Coverage.from_coverdata(coverdata_path) do
+      {:ok, Report.rows(functions, coverage, root)}
+    end
+  end
+
+  @doc """
+  Renders report rows as deterministic text output.
+  """
+  def render_report(rows, opts \\ []) do
+    Report.render(rows, opts)
+  end
+
+  @doc """
+  Groups rows that should fail threshold enforcement.
+  """
+  def failures(rows, max_score) do
+    Report.failures(rows, max_score)
+  end
 
   @doc """
   Analyzes Elixir source and combines each discovered function with explicit coverage.
@@ -64,6 +98,12 @@ defmodule ExCrap do
   def score(complexity, coverage_percent) do
     Score.score(complexity, coverage_percent)
   end
+
+  defp ensure_source_files([]), do: {:no_source_files, "lib/**/*.ex"}
+  defp ensure_source_files(_source_files), do: :ok
+
+  defp ensure_analyzable_functions([]), do: {:no_analyzable_functions, "lib/**/*.ex"}
+  defp ensure_analyzable_functions(_functions), do: :ok
 
   defp score_function(function, coverage_by_function) do
     key = {function.module, function.function, function.arity}
