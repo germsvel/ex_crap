@@ -179,7 +179,8 @@ defmodule CrapTest do
 
     test "returns no_source_files before requiring coverdata" do
       in_tmp("crap-project-report-empty", fn root ->
-        assert ExCrap.project_report(root, "missing.coverdata") == {:no_source_files, "lib/**/*.ex"}
+        assert ExCrap.project_report(root, "missing.coverdata") ==
+                 {:no_source_files, "lib/**/*.ex"}
       end)
     end
 

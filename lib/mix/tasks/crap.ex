@@ -60,7 +60,10 @@ defmodule Mix.Tasks.Crap do
          {:ok, coverdata_path, coverdata_source} <- coverdata_path(opts, root) do
       case ExCrap.project_report(root, coverdata_path) do
         {:ok, rows} ->
-          Mix.shell().info(ExCrap.render_report(rows, max_score: max_score, verbose: opts[:verbose]))
+          Mix.shell().info(
+            ExCrap.render_report(rows, max_score: max_score, verbose: opts[:verbose])
+          )
+
           enforce_threshold!(rows, max_score)
 
         error ->
