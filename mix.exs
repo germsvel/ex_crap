@@ -11,11 +11,14 @@ defmodule ExCrap.MixProject do
       compilers: [:boundary] ++ Mix.compilers(),
       aliases: [
         doc: "docs",
-        precommit: [
+        "test.crap": [
           "format",
           "test --cover --export-coverage default",
           "test.coverage",
-          "crap",
+          "crap"
+        ],
+        precommit: [
+          "test.crap",
           "muex"
         ]
       ],
@@ -33,6 +36,6 @@ defmodule ExCrap.MixProject do
   end
 
   def cli do
-    [preferred_envs: [precommit: :test]]
+    [preferred_envs: [precommit: :test, "test.crap": :test]]
   end
 end
