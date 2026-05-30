@@ -17,10 +17,7 @@ defmodule ExCrap.MixProject do
           "test.coverage",
           "crap"
         ],
-        precommit: [
-          "test.crap",
-          "muex"
-        ],
+        precommit: "test.crap",
         mutate: "muex",
         "mutate.fast": "muex --optimize-level aggressive --max-per-function 5"
       ],
