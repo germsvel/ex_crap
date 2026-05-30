@@ -32,16 +32,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-mix-
 
-      - name: Cache build
-        uses: actions/cache@v4
-        with:
-          path: _build
-          key: ${{ runner.os }}-build-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.MIX_ENV }}-
-
       - name: Install dependencies
         run: mix deps.get
 
       - name: Run precommit checks
         run: mix precommit
+
+      - name: Run mutation checks
+        run: mix mutate
