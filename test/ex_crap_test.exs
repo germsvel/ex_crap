@@ -108,7 +108,7 @@ defmodule CrapTest do
 
   describe "analyze_file/2" do
     test "returns CRAP scores for realistic source file functions with explicit coverage" do
-      path = Path.expand("../fixtures/realistic_sample.ex", __DIR__)
+      path = Path.expand("fixtures/realistic_sample.ex", __DIR__)
 
       coverage = %{
         {Realistic.Sample, :normalize, 1} => 100,
@@ -143,7 +143,7 @@ defmodule CrapTest do
     end
 
     test "rejects non-map coverage input" do
-      path = Path.expand("../fixtures/realistic_sample.ex", __DIR__)
+      path = Path.expand("fixtures/realistic_sample.ex", __DIR__)
 
       assert ExCrap.analyze_file(path, []) == {:error, :invalid_coverage_map}
     end
