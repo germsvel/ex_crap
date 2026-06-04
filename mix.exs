@@ -19,7 +19,8 @@ defmodule ExCrap.MixProject do
         ],
         precommit: "test.crap",
         mutate: "muex",
-        "mutate.fast": "muex --optimize-level aggressive --max-per-function 5"
+        "mutate.fast":
+          "muex --optimize-level aggressive --max-per-function 5 --mutators arithmetic,boolean,comparison,conditional,function_call,literal,return_value"
       ],
       deps: [
         {:stream_data, "~> 1.3", only: :test},
