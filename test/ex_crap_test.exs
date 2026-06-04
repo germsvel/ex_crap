@@ -153,10 +153,10 @@ defmodule CrapTest do
     test "builds report rows for a project root and coverdata path" do
       with_coverdata(fn coverdata_path ->
         in_tmp("crap-project-report", fn root ->
-          File.mkdir_p!("lib")
+          File.mkdir_p!(Path.join(root, "lib"))
 
           File.write!(
-            "lib/example.ex",
+            Path.join(root, "lib/example.ex"),
             "defmodule ExCrap do\n  def score(complexity, coverage), do: {complexity, coverage}\nend\n"
           )
 
@@ -186,9 +186,9 @@ defmodule CrapTest do
 
     test "returns no_analyzable_functions before requiring coverdata" do
       in_tmp("crap-project-report-no-analyzable-functions", fn root ->
-        File.mkdir_p!("lib")
+        File.mkdir_p!(Path.join(root, "lib"))
 
-        File.write!("lib/driver.ex", """
+        File.write!(Path.join(root, "lib/driver.ex"), """
         defprotocol Example.Driver do
           def visit(initial_struct, path)
         end
@@ -201,8 +201,8 @@ defmodule CrapTest do
 
     test "returns source analysis errors with absolute source paths" do
       in_tmp("crap-project-report-invalid-source", fn root ->
-        File.mkdir_p!("lib")
-        File.write!("lib/bad.ex", "defmodule")
+        File.mkdir_p!(Path.join(root, "lib"))
+        File.write!(Path.join(root, "lib/bad.ex"), "defmodule")
 
         assert ExCrap.project_report(root, "missing.coverdata") ==
                  {:error, {Path.join(root, "lib/bad.ex"), :invalid_source}}
@@ -211,8 +211,12 @@ defmodule CrapTest do
 
     test "returns coverdata errors after finding analyzable functions" do
       in_tmp("crap-project-report-missing-coverdata", fn root ->
-        File.mkdir_p!("lib")
-        File.write!("lib/example.ex", "defmodule Example do\n  def ok, do: :ok\nend\n")
+        File.mkdir_p!(Path.join(root, "lib"))
+
+        File.write!(
+          Path.join(root, "lib/example.ex"),
+          "defmodule Example do\n  def ok, do: :ok\nend\n"
+        )
 
         missing_coverdata = Path.join(root, "cover/default.coverdata")
 
@@ -224,10 +228,10 @@ defmodule CrapTest do
     test "normalizes nested files relative to the project root" do
       with_coverdata(fn coverdata_path ->
         in_tmp("crap-project-report-nested-source", fn root ->
-          File.mkdir_p!("lib/example")
+          File.mkdir_p!(Path.join(root, "lib/example"))
 
           File.write!(
-            "lib/example/nested.ex",
+            Path.join(root, "lib/example/nested.ex"),
             "defmodule ExCrap do\n  def score(complexity, coverage), do: {complexity, coverage}\nend\n"
           )
 
@@ -240,8 +244,12 @@ defmodule CrapTest do
     test "scores missing function coverage as zero percent" do
       with_coverdata(fn coverdata_path ->
         in_tmp("crap-project-report-missing-function-coverage", fn root ->
-          File.mkdir_p!("lib")
-          File.write!("lib/example.ex", "defmodule Example do\n  def ok, do: :ok\nend\n")
+          File.mkdir_p!(Path.join(root, "lib"))
+
+          File.write!(
+            Path.join(root, "lib/example.ex"),
+            "defmodule Example do\n  def ok, do: :ok\nend\n"
+          )
 
           assert {:ok,
                   [
@@ -489,12 +497,9 @@ defmodule CrapTest do
     File.rm_rf!(root)
     File.mkdir_p!(root)
 
-    previous = File.cwd!()
-
     try do
-      File.cd!(root, fn -> fun.(root) end)
+      fun.(root)
     after
-      File.cd!(previous)
       File.rm_rf!(root)
     end
   end
