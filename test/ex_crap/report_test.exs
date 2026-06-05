@@ -182,6 +182,39 @@ defmodule ExCrap.ReportTest do
       assert output == ExCrap.Report.render(rows, verbose: true)
     end
 
+    test "orders verbose rows by descending score before file and function" do
+      rows = [
+        %{
+          file: "/project/lib/a.ex",
+          module: B,
+          function: :second,
+          arity: 0,
+          complexity: 1,
+          coverage_percent: 100,
+          score: 1.0,
+          status: :scored
+        },
+        %{
+          file: "/project/lib/z.ex",
+          module: A,
+          function: :first,
+          arity: 0,
+          complexity: 4,
+          coverage_percent: 0,
+          score: 20.0,
+          status: :scored
+        }
+      ]
+
+      [_header, first_row, second_row | _summary] =
+        rows
+        |> ExCrap.Report.render(verbose: true)
+        |> String.split("\n", trim: true)
+
+      assert first_row =~ "/project/lib/z.ex | A | first/0"
+      assert second_row =~ "/project/lib/a.ex | B | second/0"
+    end
+
     test "renders failures as red x markers in compact output" do
       rows = [
         %{

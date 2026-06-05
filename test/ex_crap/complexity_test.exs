@@ -546,6 +546,31 @@ defmodule ExCrap.ComplexityTest do
                ExCrap.Complexity.from_string(source)
     end
 
+    test "rejects Module.concat names unless both operands are module-like" do
+      source = """
+      defmodule Module.concat(Example, "not a module") do
+        def ok, do: :ok
+      end
+      """
+
+      assert ExCrap.Complexity.from_string(source) == {:error, :invalid_source}
+    end
+
+    test "sorts results by module before source line" do
+      source = """
+      defmodule Zed do
+        def later_in_sort, do: :ok
+      end
+
+      defmodule Alpha do
+        def earlier_in_sort, do: :ok
+      end
+      """
+
+      assert {:ok, results} = ExCrap.Complexity.from_string(source)
+      assert Enum.map(results, & &1.module) == [Alpha, Zed]
+    end
+
     test "ignores common declarations and helper constructs safely" do
       source = """
       defmodule Example.Helpers do
