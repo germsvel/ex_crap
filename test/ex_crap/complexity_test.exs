@@ -1150,7 +1150,7 @@ defmodule ExCrap.ComplexityTest do
 
   describe "from_file/1" do
     test "parses a realistic Elixir source file without evaluating it" do
-      path = Path.expand("../../fixtures/realistic_sample.ex", __DIR__)
+      path = Path.expand("../fixtures/realistic_sample.ex", __DIR__)
 
       assert {:ok, results} = ExCrap.Complexity.from_file(path)
 
@@ -1188,7 +1188,7 @@ defmodule ExCrap.ComplexityTest do
     end
 
     test "parses new AST shapes in the realistic fixture" do
-      path = Path.expand("../../fixtures/realistic_sample.ex", __DIR__)
+      path = Path.expand("../fixtures/realistic_sample.ex", __DIR__)
 
       assert {:ok, results} = ExCrap.Complexity.from_file(path)
 
