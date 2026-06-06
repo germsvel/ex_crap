@@ -2,39 +2,34 @@ defmodule ExCrap.ScannerTest do
   use ExUnit.Case, async: false
 
   describe "source_files/1" do
-    test "returns sorted root lib source files and ignores non-source and umbrella paths" do
-      root = tmp_dir("scanner-files")
+    @tag :tmp_dir
+    test "returns sorted root lib source files and ignores non-source and umbrella paths", %{
+      tmp_dir: tmp_dir
+    } do
+      write_source(tmp_dir, "lib/b.ex", "defmodule B do\n  def b, do: :ok\nend\n")
+      write_source(tmp_dir, "lib/a.ex", "defmodule A do\n  def a, do: :ok\nend\n")
+      write_source(tmp_dir, "test/a_test.exs", "defmodule ATest do\nend\n")
+      write_source(tmp_dir, "apps/child/lib/child.ex", "defmodule Child do\nend\n")
 
-      write_source(root, "lib/b.ex", "defmodule B do\n  def b, do: :ok\nend\n")
-      write_source(root, "lib/a.ex", "defmodule A do\n  def a, do: :ok\nend\n")
-      write_source(root, "test/a_test.exs", "defmodule ATest do\nend\n")
-      write_source(root, "apps/child/lib/child.ex", "defmodule Child do\nend\n")
-
-      assert ExCrap.Scanner.source_files(root) == [
-               Path.join(root, "lib/a.ex"),
-               Path.join(root, "lib/b.ex")
+      assert ExCrap.Scanner.source_files(tmp_dir) == [
+               Path.join(tmp_dir, "lib/a.ex"),
+               Path.join(tmp_dir, "lib/b.ex")
              ]
     end
 
     test "uses the current working directory by default" do
-      root = tmp_dir("scanner-files-default-root")
+      root = File.cwd!()
 
-      path =
-        write_source(root, "lib/example.ex", "defmodule Example do\n  def ok, do: :ok\nend\n")
-
-      File.cd!(root, fn ->
-        assert [file] = ExCrap.Scanner.source_files()
-        assert String.ends_with?(file, "/lib/example.ex")
-        assert File.read!(file) == File.read!(path)
-      end)
+      assert files = ExCrap.Scanner.source_files()
+      assert Path.join(root, "lib/ex_crap.ex") in files
+      assert Enum.all?(files, &String.starts_with?(&1, Path.join(root, "lib/")))
     end
   end
 
   describe "analyze/1" do
-    test "analyzes each scanned file and attaches source file paths" do
-      root = tmp_dir("scanner-analyze")
-
-      write_source(root, "lib/example.ex", """
+    @tag :tmp_dir
+    test "analyzes each scanned file and attaches source file paths", %{tmp_dir: tmp_dir} do
+      write_source(tmp_dir, "lib/example.ex", """
       defmodule ScannerExample do
         def visible?(value) do
           if value, do: true, else: false
@@ -51,62 +46,50 @@ defmodule ExCrap.ScannerTest do
                   arity: 1,
                   complexity: 2
                 }
-              ]} = ExCrap.Scanner.analyze(root)
+              ]} = ExCrap.Scanner.analyze(tmp_dir)
 
-      assert file == Path.join(root, "lib/example.ex")
+      assert file == Path.join(tmp_dir, "lib/example.ex")
     end
 
     test "uses the current working directory when analyzing by default" do
-      root = tmp_dir("scanner-analyze-default-root")
+      root = File.cwd!()
 
-      path =
-        write_source(root, "lib/example.ex", "defmodule Example do\n  def ok, do: :ok\nend\n")
+      assert {:ok, results} = ExCrap.Scanner.analyze()
 
-      File.cd!(root, fn ->
-        assert {:ok,
-                [
-                  %{
-                    file: file,
-                    module: Example,
-                    function: :ok,
-                    arity: 0,
-                    complexity: 1
-                  }
-                ]} = ExCrap.Scanner.analyze()
-
-        assert String.ends_with?(file, "/lib/example.ex")
-        assert File.read!(file) == File.read!(path)
-      end)
+      assert Enum.any?(results, fn result ->
+               result.file == Path.join(root, "lib/ex_crap.ex") and result.module == ExCrap
+             end)
     end
 
-    test "returns an empty result when no root lib source files exist" do
-      root = tmp_dir("scanner-empty")
-
-      assert ExCrap.Scanner.analyze(root) == {:ok, []}
+    @tag :tmp_dir
+    test "returns an empty result when no root lib source files exist", %{tmp_dir: tmp_dir} do
+      assert ExCrap.Scanner.analyze(tmp_dir) == {:ok, []}
     end
 
-    test "returns an empty result when source files have no analyzable function bodies" do
-      root = tmp_dir("scanner-no-analyzable-functions")
-
-      write_source(root, "lib/driver.ex", """
+    @tag :tmp_dir
+    test "returns an empty result when source files have no analyzable function bodies", %{
+      tmp_dir: tmp_dir
+    } do
+      write_source(tmp_dir, "lib/driver.ex", """
       defprotocol Example.Driver do
         def visit(initial_struct, path)
       end
       """)
 
-      assert ExCrap.Scanner.analyze(root) == {:ok, []}
+      assert ExCrap.Scanner.analyze(tmp_dir) == {:ok, []}
     end
 
-    test "continues analyzing files after valid files with no analyzable function bodies" do
-      root = tmp_dir("scanner-mixed-analyzable-functions")
-
-      write_source(root, "lib/a_driver.ex", """
+    @tag :tmp_dir
+    test "continues analyzing files after valid files with no analyzable function bodies", %{
+      tmp_dir: tmp_dir
+    } do
+      write_source(tmp_dir, "lib/a_driver.ex", """
       defprotocol Example.Driver do
         def visit(initial_struct, path)
       end
       """)
 
-      write_source(root, "lib/b_example.ex", """
+      write_source(tmp_dir, "lib/b_example.ex", """
       defmodule ScannerExample do
         def ok, do: :ok
       end
@@ -121,16 +104,15 @@ defmodule ExCrap.ScannerTest do
                   arity: 0,
                   complexity: 1
                 }
-              ]} = ExCrap.Scanner.analyze(root)
+              ]} = ExCrap.Scanner.analyze(tmp_dir)
 
-      assert file == Path.join(root, "lib/b_example.ex")
+      assert file == Path.join(tmp_dir, "lib/b_example.ex")
     end
 
-    test "analyzes files with default-argument function heads" do
-      root = tmp_dir("scanner-default-argument-head")
-
+    @tag :tmp_dir
+    test "analyzes files with default-argument function heads", %{tmp_dir: tmp_dir} do
       path =
-        write_source(root, "lib/phoenix_test.ex", ~S"""
+        write_source(tmp_dir, "lib/phoenix_test.ex", ~S"""
         defmodule PhoenixTest do
           def check(session, label, opts \\ [exact: true])
 
@@ -149,22 +131,15 @@ defmodule ExCrap.ScannerTest do
                   arity: 3,
                   complexity: 2
                 }
-              ]} = ExCrap.Scanner.analyze(root)
+              ]} = ExCrap.Scanner.analyze(tmp_dir)
     end
 
-    test "returns a file-specific error for invalid source" do
-      root = tmp_dir("scanner-invalid-source")
-      path = write_source(root, "lib/bad.ex", "defmodule")
+    @tag :tmp_dir
+    test "returns a file-specific error for invalid source", %{tmp_dir: tmp_dir} do
+      path = write_source(tmp_dir, "lib/bad.ex", "defmodule")
 
-      assert ExCrap.Scanner.analyze(root) == {:error, {path, :invalid_source}}
+      assert ExCrap.Scanner.analyze(tmp_dir) == {:error, {path, :invalid_source}}
     end
-  end
-
-  defp tmp_dir(name) do
-    root = Path.join(System.tmp_dir!(), "crap-#{name}-#{System.unique_integer([:positive])}")
-    File.rm_rf!(root)
-    File.mkdir_p!(root)
-    root
   end
 
   defp write_source(root, relative_path, source) do

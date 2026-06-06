@@ -125,9 +125,11 @@ defmodule CrapTest do
       assert Enum.find(results, &(&1.function == :fallback)).score == 20.0
     end
 
-    test "returns an empty result for a valid source file with no analyzable functions" do
-      path =
-        Path.join(System.tmp_dir!(), "ex-crap-empty-api-#{System.unique_integer([:positive])}.ex")
+    @tag :tmp_dir
+    test "returns an empty result for a valid source file with no analyzable functions", %{
+      tmp_dir: tmp_dir
+    } do
+      path = Path.join(tmp_dir, "empty_api.ex")
 
       File.write!(path, """
       defprotocol Example.Protocol do
@@ -135,11 +137,7 @@ defmodule CrapTest do
       end
       """)
 
-      try do
-        assert ExCrap.analyze_file(path, %{}) == {:ok, []}
-      after
-        File.rm(path)
-      end
+      assert ExCrap.analyze_file(path, %{}) == {:ok, []}
     end
 
     test "rejects non-map coverage input" do
@@ -150,111 +148,97 @@ defmodule CrapTest do
   end
 
   describe "project_report/2" do
-    test "builds report rows for a project root and coverdata path" do
-      with_coverdata(fn coverdata_path ->
-        in_tmp("crap-project-report", fn root ->
-          File.mkdir_p!("lib")
+    @tag :tmp_dir
+    test "builds report rows for a project root and coverdata path", %{tmp_dir: root} do
+      with_coverdata(root, fn coverdata_path ->
+        write_source(
+          root,
+          "lib/example.ex",
+          "defmodule ExCrap do\n  def score(complexity, coverage), do: {complexity, coverage}\nend\n"
+        )
 
-          File.write!(
-            "lib/example.ex",
-            "defmodule ExCrap do\n  def score(complexity, coverage), do: {complexity, coverage}\nend\n"
-          )
-
-          assert {:ok,
-                  [
-                    %{
-                      file: "lib/example.ex",
-                      module: ExCrap,
-                      function: :score,
-                      arity: 2,
-                      complexity: 1,
-                      coverage_percent: 100.0,
-                      score: 1.0,
-                      status: :scored
-                    }
-                  ]} = ExCrap.project_report(root, coverdata_path)
-        end)
+        assert {:ok,
+                [
+                  %{
+                    file: "lib/example.ex",
+                    module: ExCrap,
+                    function: :score,
+                    arity: 2,
+                    complexity: 1,
+                    coverage_percent: 100.0,
+                    score: 1.0,
+                    status: :scored
+                  }
+                ]} = ExCrap.project_report(root, coverdata_path)
       end)
     end
 
-    test "returns no_source_files before requiring coverdata" do
-      in_tmp("crap-project-report-empty", fn root ->
-        assert ExCrap.project_report(root, "missing.coverdata") ==
-                 {:no_source_files, "lib/**/*.ex"}
+    @tag :tmp_dir
+    test "returns no_source_files before requiring coverdata", %{tmp_dir: root} do
+      assert ExCrap.project_report(root, "missing.coverdata") ==
+               {:no_source_files, "lib/**/*.ex"}
+    end
+
+    @tag :tmp_dir
+    test "returns no_analyzable_functions before requiring coverdata", %{tmp_dir: root} do
+      write_source(root, "lib/driver.ex", """
+      defprotocol Example.Driver do
+        def visit(initial_struct, path)
+      end
+      """)
+
+      assert ExCrap.project_report(root, "missing.coverdata") ==
+               {:no_analyzable_functions, "lib/**/*.ex"}
+    end
+
+    @tag :tmp_dir
+    test "returns source analysis errors with absolute source paths", %{tmp_dir: root} do
+      write_source(root, "lib/bad.ex", "defmodule")
+
+      assert ExCrap.project_report(root, "missing.coverdata") ==
+               {:error, {Path.join(root, "lib/bad.ex"), :invalid_source}}
+    end
+
+    @tag :tmp_dir
+    test "returns coverdata errors after finding analyzable functions", %{tmp_dir: root} do
+      write_source(root, "lib/example.ex", "defmodule Example do\n  def ok, do: :ok\nend\n")
+
+      missing_coverdata = Path.join(root, "cover/default.coverdata")
+
+      assert ExCrap.project_report(root, missing_coverdata) ==
+               {:error, {:coverdata_unreadable, missing_coverdata}}
+    end
+
+    @tag :tmp_dir
+    test "normalizes nested files relative to the project root", %{tmp_dir: root} do
+      with_coverdata(root, fn coverdata_path ->
+        write_source(
+          root,
+          "lib/example/nested.ex",
+          "defmodule ExCrap do\n  def score(complexity, coverage), do: {complexity, coverage}\nend\n"
+        )
+
+        assert {:ok, [%{file: "lib/example/nested.ex"}]} =
+                 ExCrap.project_report(root, coverdata_path)
       end)
     end
 
-    test "returns no_analyzable_functions before requiring coverdata" do
-      in_tmp("crap-project-report-no-analyzable-functions", fn root ->
-        File.mkdir_p!("lib")
+    @tag :tmp_dir
+    test "scores missing function coverage as zero percent", %{tmp_dir: root} do
+      with_coverdata(root, fn coverdata_path ->
+        write_source(root, "lib/example.ex", "defmodule Example do\n  def ok, do: :ok\nend\n")
 
-        File.write!("lib/driver.ex", """
-        defprotocol Example.Driver do
-          def visit(initial_struct, path)
-        end
-        """)
-
-        assert ExCrap.project_report(root, "missing.coverdata") ==
-                 {:no_analyzable_functions, "lib/**/*.ex"}
-      end)
-    end
-
-    test "returns source analysis errors with absolute source paths" do
-      in_tmp("crap-project-report-invalid-source", fn root ->
-        File.mkdir_p!("lib")
-        File.write!("lib/bad.ex", "defmodule")
-
-        assert ExCrap.project_report(root, "missing.coverdata") ==
-                 {:error, {Path.join(root, "lib/bad.ex"), :invalid_source}}
-      end)
-    end
-
-    test "returns coverdata errors after finding analyzable functions" do
-      in_tmp("crap-project-report-missing-coverdata", fn root ->
-        File.mkdir_p!("lib")
-        File.write!("lib/example.ex", "defmodule Example do\n  def ok, do: :ok\nend\n")
-
-        missing_coverdata = Path.join(root, "cover/default.coverdata")
-
-        assert ExCrap.project_report(root, missing_coverdata) ==
-                 {:error, {:coverdata_unreadable, missing_coverdata}}
-      end)
-    end
-
-    test "normalizes nested files relative to the project root" do
-      with_coverdata(fn coverdata_path ->
-        in_tmp("crap-project-report-nested-source", fn root ->
-          File.mkdir_p!("lib/example")
-
-          File.write!(
-            "lib/example/nested.ex",
-            "defmodule ExCrap do\n  def score(complexity, coverage), do: {complexity, coverage}\nend\n"
-          )
-
-          assert {:ok, [%{file: "lib/example/nested.ex"}]} =
-                   ExCrap.project_report(root, coverdata_path)
-        end)
-      end)
-    end
-
-    test "scores missing function coverage as zero percent" do
-      with_coverdata(fn coverdata_path ->
-        in_tmp("crap-project-report-missing-function-coverage", fn root ->
-          File.mkdir_p!("lib")
-          File.write!("lib/example.ex", "defmodule Example do\n  def ok, do: :ok\nend\n")
-
-          assert {:ok,
-                  [
-                    %{
-                      module: Example,
-                      function: :ok,
-                      arity: 0,
-                      coverage_percent: 0,
-                      score: 2.0,
-                      status: :scored
-                    }
-                  ]} = ExCrap.project_report(root, coverdata_path)
-        end)
+        assert {:ok,
+                [
+                  %{
+                    module: Example,
+                    function: :ok,
+                    arity: 0,
+                    coverage_percent: 0,
+                    score: 2.0,
+                    status: :scored
+                  }
+                ]} = ExCrap.project_report(root, coverdata_path)
       end)
     end
   end
@@ -457,9 +441,8 @@ defmodule CrapTest do
     end
   end
 
-  defp with_coverdata(fun) do
-    coverdata_path =
-      Path.join(System.tmp_dir!(), "crap-api-#{System.unique_integer([:positive])}.coverdata")
+  defp with_coverdata(root, fun) do
+    coverdata_path = Path.join(root, "crap-api.coverdata")
 
     cover_active? = cover_active?()
 
@@ -484,18 +467,10 @@ defmodule CrapTest do
     end
   end
 
-  defp in_tmp(name, fun) do
-    root = Path.join(System.tmp_dir!(), "#{name}-#{System.unique_integer([:positive])}")
-    File.rm_rf!(root)
-    File.mkdir_p!(root)
-
-    previous = File.cwd!()
-
-    try do
-      File.cd!(root, fn -> fun.(root) end)
-    after
-      File.cd!(previous)
-      File.rm_rf!(root)
-    end
+  defp write_source(root, relative_path, source) do
+    path = Path.join(root, relative_path)
+    File.mkdir_p!(Path.dirname(path))
+    File.write!(path, source)
+    path
   end
 end

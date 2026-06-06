@@ -48,14 +48,12 @@ defmodule ExCrap.CoverageTest do
   end
 
   describe "from_coverdata/1" do
+    @tag :tmp_dir
     test "imports real exported coverdata and returns function coverage", %{
-      cover_active?: cover_active?
+      cover_active?: cover_active?,
+      tmp_dir: tmp_dir
     } do
-      path =
-        Path.join(
-          System.tmp_dir!(),
-          "crap-coverage-#{System.unique_integer([:positive])}.coverdata"
-        )
+      path = Path.join(tmp_dir, "crap-coverage.coverdata")
 
       unless cover_active?, do: assert({:ok, ExCrap} = :cover.compile_beam(ExCrap))
 

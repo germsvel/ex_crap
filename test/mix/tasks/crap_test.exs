@@ -3,6 +3,14 @@ defmodule Mix.Tasks.CrapTest do
 
   import ExUnit.CaptureIO
 
+  setup context do
+    if tmp_dir = context[:tmp_dir] do
+      Process.put(:tmp_dir, tmp_dir)
+    end
+
+    :ok
+  end
+
   describe "task metadata" do
     test "exposes mix task docs" do
       assert Mix.Tasks.Crap.shortdoc() == "Print CRAP scores for project source"
@@ -25,6 +33,8 @@ defmodule Mix.Tasks.CrapTest do
   end
 
   describe "run/1" do
+    @describetag :tmp_dir
+
     test "prints usage for help" do
       output = capture_io(fn -> Mix.Tasks.Crap.run(["--help"]) end)
 
@@ -423,8 +433,7 @@ defmodule Mix.Tasks.CrapTest do
   end
 
   defp with_coverdata(fun) do
-    coverdata_path =
-      Path.join(System.tmp_dir!(), "crap-task-#{System.unique_integer([:positive])}.coverdata")
+    coverdata_path = Path.join(tmp_dir!(), "crap-task.coverdata")
 
     cover_active? = cover_active?()
 
@@ -453,8 +462,7 @@ defmodule Mix.Tasks.CrapTest do
   end
 
   defp in_tmp(name, fun) do
-    root = Path.join(System.tmp_dir!(), "#{name}-#{System.unique_integer([:positive])}")
-    File.rm_rf!(root)
+    root = Path.join(tmp_dir!(), name)
     File.mkdir_p!(root)
 
     previous = File.cwd!()
@@ -463,7 +471,10 @@ defmodule Mix.Tasks.CrapTest do
       File.cd!(root, fun)
     after
       File.cd!(previous)
-      File.rm_rf!(root)
     end
+  end
+
+  defp tmp_dir! do
+    Process.get(:tmp_dir) || raise "expected @tag :tmp_dir"
   end
 end
