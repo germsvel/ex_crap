@@ -241,6 +241,53 @@ defmodule CrapTest do
                 ]} = ExCrap.project_report(root, coverdata_path)
       end)
     end
+
+    @tag :tmp_dir
+    test "builds report rows from a custom source directory", %{tmp_dir: root} do
+      with_coverdata(root, fn coverdata_path ->
+        write_source(
+          root,
+          "fixtures/example.ex",
+          "defmodule ExCrap do\n  def score(complexity, coverage), do: {complexity, coverage}\nend\n"
+        )
+
+        write_source(root, "lib/ignored.ex", "defmodule Ignored do\n  def ok, do: :ok\nend\n")
+
+        assert {:ok,
+                [
+                  %{
+                    file: "fixtures/example.ex",
+                    module: ExCrap,
+                    function: :score,
+                    arity: 2,
+                    complexity: 1,
+                    coverage_percent: 100.0,
+                    score: 1.0,
+                    status: :scored
+                  }
+                ]} = ExCrap.project_report(root, coverdata_path, source_path: "fixtures")
+      end)
+    end
+
+    @tag :tmp_dir
+    test "returns custom no_source_files pattern before requiring coverdata", %{tmp_dir: root} do
+      assert ExCrap.project_report(root, "missing.coverdata", source_path: "fixtures") ==
+               {:no_source_files, "fixtures/**/*.ex"}
+    end
+
+    @tag :tmp_dir
+    test "returns custom no_analyzable_functions pattern before requiring coverdata", %{
+      tmp_dir: root
+    } do
+      write_source(root, "fixtures/driver.ex", """
+      defprotocol Example.Driver do
+        def visit(initial_struct, path)
+      end
+      """)
+
+      assert ExCrap.project_report(root, "missing.coverdata", source_path: "fixtures") ==
+               {:no_analyzable_functions, "fixtures/**/*.ex"}
+    end
   end
 
   describe "analyze_string/2 integration for new complexity rules" do

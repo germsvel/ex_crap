@@ -24,6 +24,33 @@ defmodule ExCrap.ScannerTest do
       assert Path.join(root, "lib/ex_crap.ex") in files
       assert Enum.all?(files, &String.starts_with?(&1, Path.join(root, "lib/")))
     end
+
+    @tag :tmp_dir
+    test "returns sorted source files from a custom source directory", %{tmp_dir: tmp_dir} do
+      write_source(tmp_dir, "fixtures/b.ex", "defmodule B do\n  def b, do: :ok\nend\n")
+      write_source(tmp_dir, "fixtures/a.ex", "defmodule A do\n  def a, do: :ok\nend\n")
+      write_source(tmp_dir, "lib/ignored.ex", "defmodule Ignored do\n  def ok, do: :ok\nend\n")
+      write_source(tmp_dir, "fixtures/ignored.exs", "defmodule IgnoredScript do\nend\n")
+
+      assert ExCrap.Scanner.source_files(tmp_dir, "fixtures") == [
+               Path.join(tmp_dir, "fixtures/a.ex"),
+               Path.join(tmp_dir, "fixtures/b.ex")
+             ]
+    end
+
+    @tag :tmp_dir
+    test "expands absolute custom source directories", %{tmp_dir: tmp_dir} do
+      fixtures = Path.join(tmp_dir, "fixtures")
+
+      path =
+        write_source(
+          tmp_dir,
+          "fixtures/example.ex",
+          "defmodule Example do\n  def ok, do: :ok\nend\n"
+        )
+
+      assert ExCrap.Scanner.source_files(tmp_dir, fixtures) == [path]
+    end
   end
 
   describe "analyze/1" do
@@ -139,6 +166,34 @@ defmodule ExCrap.ScannerTest do
       path = write_source(tmp_dir, "lib/bad.ex", "defmodule")
 
       assert ExCrap.Scanner.analyze(tmp_dir) == {:error, {path, :invalid_source}}
+    end
+
+    @tag :tmp_dir
+    test "analyzes files from a custom source directory", %{tmp_dir: tmp_dir} do
+      write_source(tmp_dir, "fixtures/example.ex", """
+      defmodule ScannerCustomExample do
+        def ok, do: :ok
+      end
+      """)
+
+      write_source(tmp_dir, "lib/ignored.ex", """
+      defmodule ScannerIgnoredExample do
+        def ignored, do: :ok
+      end
+      """)
+
+      assert {:ok,
+              [
+                %{
+                  file: file,
+                  module: ScannerCustomExample,
+                  function: :ok,
+                  arity: 0,
+                  complexity: 1
+                }
+              ]} = ExCrap.Scanner.analyze(tmp_dir, "fixtures")
+
+      assert file == Path.join(tmp_dir, "fixtures/example.ex")
     end
   end
 

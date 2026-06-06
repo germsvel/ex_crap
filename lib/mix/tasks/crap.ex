@@ -13,6 +13,7 @@ defmodule Mix.Tasks.Crap do
       mix crap
       mix crap --coverdata path/to/file.coverdata
       mix crap --max-score 30
+      mix crap --path path/to/source
       mix crap --verbose
 
   Coverage workflow: `mix crap` consumes persisted Mix/Erlang coverage data.
@@ -21,8 +22,10 @@ defmodule Mix.Tasks.Crap do
   a coverage report, but does not leave importable coverage data for a later
   `mix crap` run.
 
-  The task scans only root `lib/**/*.ex` files and skips valid files with no analyzable function or macro bodies,
-  such as callback-only protocols and behaviour modules.
+  The task scans root `lib/**/*.ex` files by default (default: lib). Use
+  `--path PATH` to scan another source directory as `PATH/**/*.ex`. It skips
+  valid files with no analyzable function or macro bodies, such as callback-only
+  protocols and behaviour modules.
   The default maximum CRAP score is 30 (default: 30). Use
   `--max-score N` to override it. The task fails when any function exceeds the
   threshold or has score calculation errors. Missing function coverage is scored as 0%.
@@ -33,7 +36,13 @@ defmodule Mix.Tasks.Crap do
   @impl Mix.Task
   def run(args) do
     case OptionParser.parse(args,
-           strict: [coverdata: :string, max_score: :string, help: :boolean, verbose: :boolean]
+           strict: [
+             coverdata: :string,
+             max_score: :string,
+             path: :string,
+             help: :boolean,
+             verbose: :boolean
+           ]
          ) do
       {opts, [], []} ->
         if opts[:help] do
@@ -58,7 +67,9 @@ defmodule Mix.Tasks.Crap do
 
     with {:ok, max_score} <- max_score(opts),
          {:ok, coverdata_path, coverdata_source} <- coverdata_path(opts, root) do
-      case ExCrap.project_report(root, coverdata_path) do
+      source_path = Keyword.get(opts, :path, "lib")
+
+      case ExCrap.project_report(root, coverdata_path, source_path: source_path) do
         {:ok, rows} ->
           Mix.shell().info(
             ExCrap.render_report(rows, max_score: max_score, verbose: opts[:verbose])

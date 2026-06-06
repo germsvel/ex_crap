@@ -54,7 +54,13 @@ If coverage data is somewhere else, pass it explicitly:
 mix crap --coverdata path/to/file.coverdata
 ```
 
-The task scans only root project files matching `lib/**/*.ex`. It does not scan `test/`, `config/`, `priv/`, dependencies, generated files, umbrella child apps, or arbitrary caller-provided paths. Valid files with no analyzable function or macro bodies, such as callback-only protocols and behaviour modules, are skipped because there is no executable function body to score.
+Scan a source directory other than `lib` when needed:
+
+```sh
+mix crap --path test/fixtures/elixir_samples
+```
+
+The task scans root project files matching `lib/**/*.ex` by default. Pass `--path PATH` to scan `PATH/**/*.ex` instead. It does not scan `test/`, `config/`, `priv/`, dependencies, generated files, or umbrella child apps unless you explicitly target one of those directories. Valid files with no analyzable function or macro bodies, such as callback-only protocols and behaviour modules, are skipped because there is no executable function body to score.
 
 Compact output prints green checkmarks for functions at or below the configured threshold and always prints a summary. Verbose output includes file, module, function/arity, complexity, coverage, CRAP score, and status. File paths are displayed relative to the project root. Functions with no matching coverage entry are scored pessimistically as `0%` covered.
 
@@ -68,4 +74,4 @@ Cyclomatic complexity is only a proxy for path and test burden. It does not meas
 
 ## Deferred Work
 
-Future slices may add machine-readable formats, broader path selection, umbrella support, third-party coverage formats, and richer reporting.
+Future slices may add machine-readable formats, umbrella-aware defaults, third-party coverage formats, and richer reporting.

@@ -8,8 +8,8 @@ defmodule ExCrap do
   enforces a maximum CRAP score threshold (default `30`) and fails with a non-zero
   exit when any function exceeds it or any score calculation error occurs.
 
-  Deferred work for later slices includes machine-readable formats, broader path
-  selection, umbrella support, third-party coverage formats, and richer reporting.
+  Deferred work for later slices includes machine-readable formats,
+  umbrella-aware defaults, third-party coverage formats, and richer reporting.
   """
 
   alias ExCrap.Complexity
@@ -34,17 +34,21 @@ defmodule ExCrap do
   def analyze_file(_path, _coverage_by_function), do: {:error, :invalid_coverage_map}
 
   @doc """
-  Scans root project source files, imports coverdata, and builds CRAP report rows.
+  Scans project source files, imports coverdata, and builds CRAP report rows.
 
-  The scan is intentionally limited to root `lib/**/*.ex` files. Valid projects
-  with no analyzable function or macro bodies return `{:no_analyzable_functions, "lib/**/*.ex"}`.
+  The scan defaults to root `lib/**/*.ex` files. Pass `source_path: path` to scan
+  another source directory. Valid projects with no analyzable function or macro
+  bodies return `{:no_analyzable_functions, pattern}`.
   """
-  def project_report(root, coverdata_path) when is_binary(root) and is_binary(coverdata_path) do
-    source_files = Scanner.source_files(root)
+  def project_report(root, coverdata_path, opts \\ [])
+      when is_binary(root) and is_binary(coverdata_path) do
+    source_path = Keyword.get(opts, :source_path, "lib")
+    source_pattern = root |> Scanner.source_pattern(source_path) |> Path.relative_to(root)
+    source_files = Scanner.source_files(root, source_path)
 
-    with :ok <- ensure_source_files(source_files),
-         {:ok, functions} <- Scanner.analyze(root),
-         :ok <- ensure_analyzable_functions(functions),
+    with :ok <- ensure_source_files(source_files, source_pattern),
+         {:ok, functions} <- Scanner.analyze(root, source_path),
+         :ok <- ensure_analyzable_functions(functions, source_pattern),
          {:ok, coverage} <- Coverage.from_coverdata(coverdata_path) do
       {:ok, Report.rows(functions, coverage, root)}
     end
@@ -99,11 +103,13 @@ defmodule ExCrap do
     Score.score(complexity, coverage_percent)
   end
 
-  defp ensure_source_files([]), do: {:no_source_files, "lib/**/*.ex"}
-  defp ensure_source_files(_source_files), do: :ok
+  defp ensure_source_files([], source_pattern), do: {:no_source_files, source_pattern}
+  defp ensure_source_files(_source_files, _source_pattern), do: :ok
 
-  defp ensure_analyzable_functions([]), do: {:no_analyzable_functions, "lib/**/*.ex"}
-  defp ensure_analyzable_functions(_functions), do: :ok
+  defp ensure_analyzable_functions([], source_pattern),
+    do: {:no_analyzable_functions, source_pattern}
+
+  defp ensure_analyzable_functions(_functions, _source_pattern), do: :ok
 
   defp score_function(function, coverage_by_function) do
     key = {function.module, function.function, function.arity}
