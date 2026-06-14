@@ -49,6 +49,27 @@ defmodule ExCrap.CoverageTest do
 
   describe "from_coverdata/1" do
     @tag :tmp_dir
+    test "does not fall back to live cover modules when imported coverdata is empty", %{
+      tmp_dir: tmp_dir
+    } do
+      path = Path.join(tmp_dir, "empty.coverdata")
+
+      :cover.stop()
+      assert {:ok, _pid} = :cover.start()
+      assert {:ok, ExCrap} = :cover.compile_beam(ExCrap)
+      assert {:error, {:not_cover_compiled, []}} = :cover.export(String.to_charlist(path), [])
+      assert File.regular?(path)
+
+      try do
+        assert ExCrap.Coverage.from_coverdata(path) == {:ok, %{}}
+      after
+        File.rm(path)
+        :cover.stop()
+        assert {:ok, _pid} = :cover.start()
+      end
+    end
+
+    @tag :tmp_dir
     test "imports real exported coverdata and returns function coverage", %{
       cover_active?: cover_active?,
       tmp_dir: tmp_dir

@@ -49,12 +49,7 @@ defmodule ExCrap.Coverage do
   end
 
   defp analysis_modules do
-    imported_modules = :cover.imported_modules()
-
-    case imported_modules do
-      modules when is_list(modules) and modules != [] -> modules
-      _other -> :cover.modules()
-    end
+    :cover.imported_modules()
   end
 
   defp coverage_for_modules(modules) do
