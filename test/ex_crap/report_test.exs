@@ -97,6 +97,30 @@ defmodule ExCrap.ReportTest do
       assert [row] = ExCrap.Report.rows(functions, coverage, "/project")
       assert row.file == "lib/example.ex"
     end
+
+    test "rejects invalid rows/3 arguments" do
+      functions = [
+        %{
+          file: "/project/lib/example.ex",
+          module: Example,
+          function: :visible?,
+          arity: 1,
+          complexity: 4
+        }
+      ]
+
+      assert_raise FunctionClauseError, fn ->
+        ExCrap.Report.rows(%{}, %{}, "/project")
+      end
+
+      assert_raise FunctionClauseError, fn ->
+        ExCrap.Report.rows(functions, [], "/project")
+      end
+
+      assert_raise FunctionClauseError, fn ->
+        ExCrap.Report.rows(functions, %{}, :project)
+      end
+    end
   end
 
   describe "render/1" do

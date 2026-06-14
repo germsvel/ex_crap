@@ -310,6 +310,18 @@ defmodule ExCrap.ComplexityTest do
       assert {:ok, [%{complexity: 5}]} = ExCrap.Complexity.from_string(source)
     end
 
+    test "skips unrelated trailing keyword lists when finding control flow keywords" do
+      source = """
+      defmodule Example do
+        def classify(value) do
+          case value, [do: (_ -> :ok)], ok: true
+        end
+      end
+      """
+
+      assert {:ok, [%{complexity: 2}]} = ExCrap.Complexity.from_string(source)
+    end
+
     test "prefers control flow keyword blocks over matching keyword literals" do
       source = """
       defmodule Example do
@@ -399,6 +411,30 @@ defmodule ExCrap.ComplexityTest do
                line: 7,
                complexity: 1
              }
+    end
+
+    test "sorts aggregated results by module, line, function, and arity" do
+      source = """
+      defmodule Zeta do
+        def z, do: :ok
+      end
+
+      defmodule Alpha do
+        def z, do: :ok
+        def a, do: :ok
+        def b, do: :ok; def a(_), do: :ok
+      end
+      """
+
+      assert {:ok, results} = ExCrap.Complexity.from_string(source)
+
+      assert Enum.map(results, &{&1.module, &1.function, &1.arity, &1.line}) == [
+               {Alpha, :z, 0, 6},
+               {Alpha, :a, 0, 7},
+               {Alpha, :a, 1, 8},
+               {Alpha, :b, 0, 8},
+               {Zeta, :z, 0, 2}
+             ]
     end
 
     test "counts multiple guarded clauses as function-level decision paths" do
@@ -1064,6 +1100,15 @@ defmodule ExCrap.ComplexityTest do
         assert {:error, :invalid_source} = ExCrap.Complexity.from_string(bodyless_source)
         assert {:error, :invalid_source} = ExCrap.Complexity.from_string(bodied_source)
       end
+
+      assert {:error, :invalid_source} =
+               ExCrap.Complexity.from_string("""
+               defmodule Bad do
+                 def Foo.bar do
+                   :ok
+                 end
+               end
+               """)
     end
 
     test "does not treat different definition kinds as implementations" do
@@ -1097,6 +1142,13 @@ defmodule ExCrap.ComplexityTest do
 
       assert {:error, :invalid_source} =
                ExCrap.Complexity.from_string("defimpl String.Chars, for: 123 do\nend")
+
+      assert {:error, :invalid_source} =
+               ExCrap.Complexity.from_string("""
+               defimpl String.Chars, for: [Example, 123] do
+                 def to_string(_), do: "ok"
+               end
+               """)
     end
 
     test "returns an error tuple for unsupported defimpl shapes" do

@@ -24,5 +24,10 @@ defmodule ExCrap.ScoreTest do
       assert ExCrap.Score.score(4, 101) == {:error, :invalid_coverage}
       assert ExCrap.Score.score(4, :covered) == {:error, :invalid_coverage}
     end
+
+    test "rejects fractional coverage outside the valid range" do
+      assert ExCrap.Score.score(4, -0.1) == {:error, :invalid_coverage}
+      assert ExCrap.Score.score(4, 100.1) == {:error, :invalid_coverage}
+    end
   end
 end

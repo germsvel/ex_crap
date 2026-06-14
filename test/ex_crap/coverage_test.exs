@@ -70,6 +70,21 @@ defmodule ExCrap.CoverageTest do
       File.rm(path)
     end
 
+    @tag :tmp_dir
+    test "restores the active cover process group leader after importing coverdata", %{
+      tmp_dir: tmp_dir
+    } do
+      path = Path.join(tmp_dir, "group-leader.coverdata")
+      assert :ok = :cover.export(String.to_charlist(path))
+      assert {:error, {:already_started, cover_pid}} = :cover.start()
+      {:group_leader, group_leader} = Process.info(cover_pid, :group_leader)
+
+      assert {:ok, _coverage} = ExCrap.Coverage.from_coverdata(path)
+
+      assert Process.info(cover_pid, :group_leader) == {:group_leader, group_leader}
+      File.rm(path)
+    end
+
     test "returns a clear error for unreadable coverdata" do
       assert ExCrap.Coverage.from_coverdata("/missing/nope.coverdata") ==
                {:error, {:coverdata_unreadable, "/missing/nope.coverdata"}}
