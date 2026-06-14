@@ -180,6 +180,13 @@ defmodule CrapTest do
     end
 
     @tag :tmp_dir
+    test "rejects non-binary coverdata paths before scanning", %{tmp_dir: root} do
+      assert_raise FunctionClauseError, fn ->
+        ExCrap.project_report(root, nil)
+      end
+    end
+
+    @tag :tmp_dir
     test "returns no_analyzable_functions before requiring coverdata", %{tmp_dir: root} do
       write_source(root, "lib/driver.ex", """
       defprotocol Example.Driver do
