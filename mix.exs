@@ -65,6 +65,7 @@ defmodule ExCrap.MixProject do
         "lib/mix/tasks/crap.ex",
         "mix.exs",
         "README.md",
+        "CHANGELOG.md",
         "LICENSE.md"
       ],
       licenses: ["MIT"],
@@ -75,7 +76,7 @@ defmodule ExCrap.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md"],
+      extras: ["README.md", "CHANGELOG.md"],
       source_ref: "v#{@version}",
       source_url: @source_url
     ]
