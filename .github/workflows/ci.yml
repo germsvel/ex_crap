@@ -45,3 +45,6 @@ jobs:
 
       - name: Run precommit checks
         run: mix precommit
+
+      - name: Run mutation checks
+        run: mix mutate.fast
