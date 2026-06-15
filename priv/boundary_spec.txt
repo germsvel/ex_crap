@@ -1,6 +1,6 @@
 
 ExCrap
-  exports: BoundarySpec
+  exports: 
   deps: 
 
 ExCrap.Complexity

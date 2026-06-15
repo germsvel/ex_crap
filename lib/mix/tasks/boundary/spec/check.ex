@@ -16,10 +16,10 @@ defmodule Mix.Tasks.Boundary.Spec.Check do
 
   @impl Mix.Task
   def run([]) do
-    with {:ok, current} <- ExCrap.BoundarySpec.current_spec() do
-      case ExCrap.BoundarySpec.check_snapshot(current) do
+    with {:ok, current} <- ExCrap.Mix.BoundarySpec.current_spec() do
+      case ExCrap.Mix.BoundarySpec.check_snapshot(current) do
         :ok ->
-          Mix.shell().info("Boundary spec matches #{ExCrap.BoundarySpec.snapshot_path()}.")
+          Mix.shell().info("Boundary spec matches #{ExCrap.Mix.BoundarySpec.snapshot_path()}.")
 
         {:error, {:missing_snapshot, path}} ->
           Mix.raise(

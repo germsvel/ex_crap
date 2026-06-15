@@ -1,7 +1,7 @@
-defmodule ExCrap.BoundarySpecTest do
+defmodule ExCrap.Mix.BoundarySpecTest do
   use ExUnit.Case, async: false
 
-  alias ExCrap.BoundarySpec
+  alias ExCrap.Mix.BoundarySpec
 
   setup do
     on_exit(fn ->
@@ -18,6 +18,12 @@ defmodule ExCrap.BoundarySpecTest do
   test "exposes snapshot path and approval phrase" do
     assert BoundarySpec.snapshot_path() == "priv/boundary_spec.txt"
     assert BoundarySpec.approval_phrase() == "approve boundary spec change"
+  end
+
+  test "current spec does not export Boundary maintenance module from public boundary" do
+    assert {:ok, spec} = BoundarySpec.current_spec()
+
+    refute spec =~ "exports: BoundarySpec"
   end
 
   test "snapshot path can be overridden for tests" do

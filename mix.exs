@@ -54,6 +54,19 @@ defmodule ExCrap.MixProject do
 
   defp package do
     [
+      files: [
+        "lib/ex_crap.ex",
+        "lib/ex_crap/complexity.ex",
+        "lib/ex_crap/coverage.ex",
+        "lib/ex_crap/mix.ex",
+        "lib/ex_crap/report.ex",
+        "lib/ex_crap/scanner.ex",
+        "lib/ex_crap/score.ex",
+        "lib/mix/tasks/crap.ex",
+        "mix.exs",
+        "README.md",
+        "LICENSE.md"
+      ],
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url}
     ]

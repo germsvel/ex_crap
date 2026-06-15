@@ -1,5 +1,5 @@
 defmodule ExCrap do
-  use Boundary, exports: [BoundarySpec]
+  use Boundary
 
   @moduledoc """
   Public API for calculating CRAP scores from complexity and coverage data.

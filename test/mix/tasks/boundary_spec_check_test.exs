@@ -3,7 +3,7 @@ defmodule Mix.Tasks.Boundary.Spec.CheckTest do
 
   import ExUnit.CaptureIO
 
-  alias ExCrap.BoundarySpec
+  alias ExCrap.Mix.BoundarySpec
   alias Mix.Tasks.Boundary.Spec.Check
 
   setup do

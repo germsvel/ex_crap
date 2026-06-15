@@ -1,4 +1,4 @@
-defmodule ExCrap.BoundarySpec do
+defmodule ExCrap.Mix.BoundarySpec do
   @moduledoc false
 
   @snapshot_path "priv/boundary_spec.txt"

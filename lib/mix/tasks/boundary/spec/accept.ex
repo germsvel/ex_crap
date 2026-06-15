@@ -15,18 +15,18 @@ defmodule Mix.Tasks.Boundary.Spec.Accept do
 
   @impl Mix.Task
   def run([]) do
-    unless ExCrap.BoundarySpec.interactive?() do
+    unless ExCrap.Mix.BoundarySpec.interactive?() do
       Mix.raise("Boundary spec acceptance requires interactive human approval.")
     end
 
-    with {:ok, current} <- ExCrap.BoundarySpec.current_spec() do
+    with {:ok, current} <- ExCrap.Mix.BoundarySpec.current_spec() do
       show_existing_diff(current)
       confirm!()
 
-      case ExCrap.BoundarySpec.write_snapshot(current) do
+      case ExCrap.Mix.BoundarySpec.write_snapshot(current) do
         :ok ->
           Mix.shell().info(
-            "Updated Boundary spec snapshot: #{ExCrap.BoundarySpec.snapshot_path()}"
+            "Updated Boundary spec snapshot: #{ExCrap.Mix.BoundarySpec.snapshot_path()}"
           )
 
         {:error, reason} ->
@@ -50,19 +50,19 @@ defmodule Mix.Tasks.Boundary.Spec.Accept do
   def moduledoc, do: @task_moduledoc
 
   defp show_existing_diff(current) do
-    case File.read(ExCrap.BoundarySpec.snapshot_path()) do
+    case File.read(ExCrap.Mix.BoundarySpec.snapshot_path()) do
       {:ok, ^current} ->
         Mix.shell().info("Boundary spec snapshot already matches current output.")
 
       {:ok, expected} ->
         Mix.shell().info(
-          "Boundary spec change to accept:\n\n" <> ExCrap.BoundarySpec.diff(expected, current)
+          "Boundary spec change to accept:\n\n" <> ExCrap.Mix.BoundarySpec.diff(expected, current)
         )
 
       {:error, :enoent} ->
         Mix.shell().info(
-          "Boundary spec snapshot will be created: #{ExCrap.BoundarySpec.snapshot_path()}\n\n" <>
-            ExCrap.BoundarySpec.diff("", current)
+          "Boundary spec snapshot will be created: #{ExCrap.Mix.BoundarySpec.snapshot_path()}\n\n" <>
+            ExCrap.Mix.BoundarySpec.diff("", current)
         )
 
       {:error, reason} ->
@@ -72,11 +72,11 @@ defmodule Mix.Tasks.Boundary.Spec.Accept do
 
   defp confirm! do
     confirmation =
-      ExCrap.BoundarySpec.read_confirmation()
+      ExCrap.Mix.BoundarySpec.read_confirmation()
       |> to_string()
       |> String.trim()
 
-    unless confirmation == ExCrap.BoundarySpec.approval_phrase() do
+    unless confirmation == ExCrap.Mix.BoundarySpec.approval_phrase() do
       Mix.raise("Boundary spec acceptance was not confirmed.")
     end
   end
