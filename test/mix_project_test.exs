@@ -1,5 +1,5 @@
 defmodule ExCrap.MixProjectTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case
 
   test "precommit runs test.crap before boundary spec check" do
     aliases = ExCrap.MixProject.project() |> Keyword.fetch!(:aliases)
@@ -13,5 +13,29 @@ defmodule ExCrap.MixProjectTest do
     assert Keyword.fetch!(preferred_envs, :precommit) == :test
     assert Keyword.fetch!(preferred_envs, :"test.crap") == :test
     assert Keyword.fetch!(preferred_envs, :"boundary.spec.check") == :test
+  end
+
+  test "published Hex package excludes internal Boundary maintenance files" do
+    package_dir =
+      Path.join(System.tmp_dir!(), "ex_crap_hex_package_#{System.unique_integer([:positive])}")
+
+    try do
+      {output, status} =
+        System.cmd("mix", ["hex.build", "--unpack", "--output", package_dir],
+          cd: File.cwd!(),
+          stderr_to_stdout: true
+        )
+
+      assert status == 0, output
+
+      refute File.exists?(Path.join(package_dir, "lib/ex_crap/boundary_spec.ex"))
+      refute File.exists?(Path.join(package_dir, "lib/mix/tasks/boundary/spec/check.ex"))
+      refute File.exists?(Path.join(package_dir, "lib/mix/tasks/boundary/spec/accept.ex"))
+      refute File.exists?(Path.join(package_dir, "priv/boundary_spec.txt"))
+
+      assert File.regular?(Path.join(package_dir, "lib/mix/tasks/crap.ex"))
+    after
+      File.rm_rf!(package_dir)
+    end
   end
 end
