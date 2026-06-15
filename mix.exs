@@ -1,11 +1,19 @@
 defmodule ExCrap.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
+  @source_url "https://github.com/germsvel/ex_crap"
+
   def project do
     [
       app: :ex_crap,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.19",
+      description: description(),
+      package: package(),
+      source_url: @source_url,
+      homepage_url: @source_url,
+      docs: docs(),
       start_permanent: Mix.env() == :prod,
       test_ignore_filters: [~r{^test/fixtures/}],
       compilers: [:boundary] ++ Mix.compilers(),
@@ -38,5 +46,25 @@ defmodule ExCrap.MixProject do
 
   def cli do
     [preferred_envs: [precommit: :test, "test.crap": :test, "boundary.spec.check": :test]]
+  end
+
+  defp description do
+    "Calculate Change Risk Anti-Patterns scores from cyclomatic complexity and test coverage."
+  end
+
+  defp package do
+    [
+      licenses: ["MIT"],
+      links: %{"GitHub" => @source_url}
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      extras: ["README.md"],
+      source_ref: "v#{@version}",
+      source_url: @source_url
+    ]
   end
 end
