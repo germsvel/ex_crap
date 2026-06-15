@@ -15,6 +15,12 @@ defmodule ExCrap.MixProjectTest do
     assert Keyword.fetch!(preferred_envs, :"boundary.spec.check") == :test
   end
 
+  test "application config starts coverage tools for dev and test usage" do
+    applications = ExCrap.MixProject.application() |> Keyword.fetch!(:extra_applications)
+
+    assert applications == [:logger, :tools]
+  end
+
   test "published Hex package excludes internal Boundary maintenance files" do
     package_dir =
       Path.join(System.tmp_dir!(), "ex_crap_hex_package_#{System.unique_integer([:positive])}")

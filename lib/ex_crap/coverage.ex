@@ -10,7 +10,7 @@ defmodule ExCrap.Coverage do
     if File.regular?(path) do
       with :ok <- ensure_cover_started(),
            :ok <- :cover.import(String.to_charlist(path)),
-           modules when is_list(modules) <- analysis_modules() do
+           modules when is_list(modules) <- :cover.imported_modules() do
         {:ok, coverage_for_modules(modules)}
       else
         {:error, reason} -> {:error, reason}
@@ -41,11 +41,8 @@ defmodule ExCrap.Coverage do
       {:ok, _pid} -> :ok
       {:error, {:already_started, _pid}} -> :ok
       :ok -> :ok
+      {:error, reason} -> {:error, reason}
     end
-  end
-
-  defp analysis_modules do
-    :cover.imported_modules()
   end
 
   defp coverage_for_modules(modules) do

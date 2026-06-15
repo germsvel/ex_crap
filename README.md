@@ -7,7 +7,7 @@ ExCrap is an Elixir library and Mix task for calculating Change Risk Anti-Patter
 Add `ex_crap` to your list of dependencies in `mix.exs`:
 
 ```elixir
-{:ex_crap, "~> 0.1.0"}
+{:ex_crap, "~> 0.1.0", only: [:dev, :test], runtime: false}
 ```
 
 ## Library API
