@@ -2,6 +2,14 @@
 
 ExCrap is an Elixir library and Mix task for calculating Change Risk Anti-Patterns scores from cyclomatic complexity and test coverage. It is a prioritization signal for uncovered complexity, not a complete code-quality or maintainability measure.
 
+## Installation
+
+Add `ex_crap` to your list of dependencies in `mix.exs`:
+
+```elixir
+{:ex_crap, "~> 0.1.0"}
+```
+
 ## Library API
 
 Calculate a score directly:
