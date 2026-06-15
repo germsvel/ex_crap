@@ -4,12 +4,12 @@ defmodule ExCrap do
   @moduledoc """
   Public API for calculating CRAP scores from complexity and coverage data.
 
+  Use `score/2` to calculate a CRAP score directly. Use `analyze_string/2` or
+  `analyze_file/2` to analyze Elixir source with explicit function coverage data.
+
   Use `mix crap` for a project scan from exported Mix/Erlang coverdata. The task
   enforces a maximum CRAP score threshold (default `30`) and fails with a non-zero
   exit when any function exceeds it or any score calculation error occurs.
-
-  Deferred work for later slices includes machine-readable formats,
-  umbrella-aware defaults, third-party coverage formats, and richer reporting.
   """
 
   alias ExCrap.Complexity
@@ -21,7 +21,7 @@ defmodule ExCrap do
   @doc """
   Analyzes one Elixir source file and combines each discovered function with explicit coverage.
 
-  This is a single-file convenience wrapper around `ExCrap.Complexity.from_file/1`.
+  This is a single-file convenience wrapper around the internal complexity analyzer.
   Valid files with no analyzable function or macro bodies return `{:ok, []}`.
   It does not perform project-wide scanning or coverage discovery.
   """
@@ -33,13 +33,7 @@ defmodule ExCrap do
 
   def analyze_file(_path, _coverage_by_function), do: {:error, :invalid_coverage_map}
 
-  @doc """
-  Scans project source files, imports coverdata, and builds CRAP report rows.
-
-  The scan defaults to root `lib/**/*.ex` files. Pass `source_path: path` to scan
-  another source directory. Valid projects with no analyzable function or macro
-  bodies return `{:no_analyzable_functions, pattern}`.
-  """
+  @doc false
   def project_report(root, coverdata_path, opts \\ [])
       when is_binary(root) and is_binary(coverdata_path) do
     source_path = Keyword.get(opts, :source_path, "lib")
@@ -54,16 +48,12 @@ defmodule ExCrap do
     end
   end
 
-  @doc """
-  Renders report rows as deterministic text output.
-  """
+  @doc false
   def render_report(rows, opts \\ []) do
     Report.render(rows, opts)
   end
 
-  @doc """
-  Groups rows that should fail threshold enforcement.
-  """
+  @doc false
   def failures(rows, max_score) do
     Report.failures(rows, max_score)
   end

@@ -1,13 +1,11 @@
 defmodule ExCrap.Coverage do
   use Boundary
 
-  @moduledoc """
-  Imports Erlang/Mix coverdata and exposes function coverage percentages.
-  """
+  @moduledoc false
 
-  @doc """
-  Imports an exported `.coverdata` file and returns coverage by `{module, function, arity}`.
-  """
+  # Imports Erlang/Mix coverdata and normalizes function coverage percentages by MFA.
+
+  @doc false
   def from_coverdata(path) when is_binary(path) do
     if File.regular?(path) do
       with :ok <- ensure_cover_started(),
@@ -22,9 +20,7 @@ defmodule ExCrap.Coverage do
     end
   end
 
-  @doc """
-  Converts Erlang `:cover` function rows into percentage coverage.
-  """
+  @doc false
   def from_function_rows(rows) when is_list(rows) do
     Map.new(rows, fn {{module, function, arity}, {covered, not_covered}} ->
       total = covered + not_covered

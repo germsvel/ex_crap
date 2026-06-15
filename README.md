@@ -1,4 +1,4 @@
-# CRAP
+# ExCrap
 
 ExCrap is an Elixir library and Mix task for calculating Change Risk Anti-Patterns scores from cyclomatic complexity and test coverage. It is a prioritization signal for uncovered complexity, not a complete code-quality or maintainability measure.
 
@@ -16,6 +16,13 @@ Analyze source with explicit coverage data:
 ```elixir
 coverage = %{{Example, :visible?, 1} => 75}
 ExCrap.analyze_string(source, coverage)
+```
+
+Analyze one source file with explicit coverage data:
+
+```elixir
+coverage = %{{Example, :visible?, 1} => 75}
+ExCrap.analyze_file("lib/example.ex", coverage)
 ```
 
 ## Mix Task
@@ -71,7 +78,3 @@ The task fails with a non-zero exit status when any scored function is above the
 CRAP combines function-level cyclomatic complexity with function-level coverage to highlight code that is risky to change because it is both complex and under-tested. The default threshold of `30` follows the historical CRAP convention.
 
 Cyclomatic complexity is only a proxy for path and test burden. It does not measure naming, cohesion, coupling, domain complexity, readability, code smells, or whether tests contain meaningful assertions. Treat high CRAP scores as a queue for investigation: add meaningful tests, simplify the function, or test before refactoring risky legacy code.
-
-## Deferred Work
-
-Future slices may add machine-readable formats, umbrella-aware defaults, third-party coverage formats, and richer reporting.

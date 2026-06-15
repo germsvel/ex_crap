@@ -1,18 +1,13 @@
 defmodule ExCrap.Scanner do
   use Boundary, deps: [ExCrap.Complexity]
 
-  @moduledoc """
-  Scans project source files for CRAP analysis.
+  @moduledoc false
 
-  This scanner defaults to root `lib/**/*.ex` files and can scan another source
-  directory when one is provided.
-  """
+  # Scans root `source_path/**/*.ex` files for project-level CRAP analysis.
 
   alias ExCrap.Complexity
 
-  @doc """
-  Returns sorted `.ex` source files under `source_path`.
-  """
+  @doc false
   def source_files(root \\ File.cwd!(), source_path \\ "lib")
       when is_binary(root) and is_binary(source_path) do
     root
@@ -21,9 +16,7 @@ defmodule ExCrap.Scanner do
     |> Enum.sort()
   end
 
-  @doc """
-  Analyzes all selected source files and attaches each result's source file path.
-  """
+  @doc false
   def analyze(root \\ File.cwd!(), source_path \\ "lib")
       when is_binary(root) and is_binary(source_path) do
     root
@@ -40,6 +33,7 @@ defmodule ExCrap.Scanner do
     end)
   end
 
+  @doc false
   def source_pattern(root, source_path) when is_binary(root) and is_binary(source_path) do
     source_path
     |> Path.expand(root)

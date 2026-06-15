@@ -59,7 +59,10 @@ defmodule Mix.Tasks.Crap do
     end
   end
 
+  @doc false
   def shortdoc, do: @shortdoc
+
+  @doc false
   def moduledoc, do: @moduledoc
 
   defp run_report(opts) do

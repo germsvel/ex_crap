@@ -3,12 +3,15 @@ defmodule Mix.Tasks.Boundary.Spec.Accept do
   use Boundary, classify_to: ExCrap.Mix
 
   @shortdoc "Accept current Boundary spec snapshot"
-
-  @moduledoc """
+  @task_moduledoc """
   Writes the current `mix boundary.spec` output to `priv/boundary_spec.txt`.
 
   This task requires interactive human approval. It has no non-interactive approval flag.
   """
+
+  @moduledoc false
+
+  # Internal maintenance task for accepting the checked-in Boundary spec snapshot.
 
   @impl Mix.Task
   def run([]) do
@@ -35,12 +38,16 @@ defmodule Mix.Tasks.Boundary.Spec.Accept do
     end
   end
 
+  @doc false
   def run([arg | _args]) do
     Mix.raise("Unexpected argument: #{arg}")
   end
 
+  @doc false
   def shortdoc, do: @shortdoc
-  def moduledoc, do: @moduledoc
+
+  @doc false
+  def moduledoc, do: @task_moduledoc
 
   defp show_existing_diff(current) do
     case File.read(ExCrap.BoundarySpec.snapshot_path()) do

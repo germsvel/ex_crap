@@ -1,23 +1,19 @@
 defmodule ExCrap.Report do
   use Boundary, deps: [ExCrap.Score]
 
-  @moduledoc """
-  Builds CRAP report rows from complexity and coverage data.
-  """
+  @moduledoc false
+
+  # Builds CRAP report rows by combining complexity results with coverage data.
 
   alias ExCrap.Score
 
-  @doc """
-  Joins complexity results with coverage by `{module, function, arity}`.
-  """
+  @doc false
   def rows(functions, coverage_by_function)
       when is_list(functions) and is_map(coverage_by_function) do
     rows(functions, coverage_by_function, nil)
   end
 
-  @doc """
-  Joins complexity results with coverage and normalizes files relative to `root` when provided.
-  """
+  @doc false
   def rows(functions, coverage_by_function, root)
       when is_list(functions) and is_map(coverage_by_function) and
              (is_binary(root) or is_nil(root)) do
@@ -26,9 +22,7 @@ defmodule ExCrap.Report do
     |> Enum.map(&row(&1, coverage_by_function))
   end
 
-  @doc """
-  Groups rows that should fail threshold enforcement.
-  """
+  @doc false
   def failures(rows, max_score) when is_list(rows) and is_number(max_score) do
     %{
       high_scores: Enum.filter(rows, &high_score?(&1, max_score)),
@@ -36,9 +30,7 @@ defmodule ExCrap.Report do
     }
   end
 
-  @doc """
-  Renders report rows as deterministic text output.
-  """
+  @doc false
   def render(rows, opts \\ []) when is_list(rows) and is_list(opts) do
     sorted_rows = Enum.sort_by(rows, &sort_key/1)
     max_score = Keyword.get(opts, :max_score, 30.0)

@@ -1,20 +1,11 @@
 defmodule ExCrap.Score do
   use Boundary
 
-  @moduledoc """
-  Calculates canonical CRAP scores from complexity and coverage data.
-  """
+  @moduledoc false
 
-  @doc """
-  Calculates the canonical CRAP score for a complexity and coverage percentage.
+  # CRAP = complexity^2 * (1 - coverage_percent / 100)^3 + complexity.
 
-  The formula is:
-
-      complexity^2 * (1 - coverage_percent / 100)^3 + complexity
-
-  `complexity` must be numeric and non-negative. `coverage_percent` must be numeric
-  and between `0` and `100` inclusive. Fractional scores are preserved.
-  """
+  @doc false
   def score(complexity, coverage_percent) do
     with :ok <- validate_complexity(complexity),
          :ok <- validate_coverage(coverage_percent) do

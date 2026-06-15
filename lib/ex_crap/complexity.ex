@@ -1,38 +1,24 @@
 defmodule ExCrap.Complexity do
   use Boundary
 
-  @moduledoc """
-  Parses Elixir source and returns sprint-local cyclomatic complexity results for
-  supported executable containers, including modules and protocol implementations.
+  @moduledoc false
 
-  Source is parsed with `Code.string_to_quoted/1`; analyzed code is not compiled or
-  evaluated. Each result includes `module`, `function`, `arity`, `line`, and
-  `complexity`.
-
-  Current decision-point rules:
-
-  * Each discovered `def`, `defp`, `defmacro`, or `defmacrop` starts with base complexity `1`.
-  * Each `if` and `unless` adds `1`.
-  * Each `case` branch adds `1`.
-  * Each `cond` clause adds `1`.
-  * Each `with` generator and `else` branch adds `1`.
-  * `try` adds `1`; each `else`, `rescue`, and `catch` clause adds `1`.
-  * Each `for` generator and filter adds `1`.
-  * Each `receive` branch adds `1`; an `after` timeout branch adds `1`.
-  * Boolean `and`, `or`, `&&`, and `||` operators add `1` each.
-  * Boolean operators in function guards add `1` each.
-  * Multiple clauses for the same `{module, function, arity}` are aggregated by
-    summing one path per clause plus each clause's guard/body decisions.
-  """
+  # Parses source with `Code.string_to_quoted/1`; analyzed code is not compiled or
+  # evaluated. Results include module, function, arity, line, and complexity.
+  #
+  # Decision-point rules:
+  # - Each discovered def/defp/defmacro/defmacrop starts with base complexity 1.
+  # - if/unless add 1.
+  # - case/cond/receive branches add 1 each.
+  # - with generators and else branches add 1 each.
+  # - try adds 1; else/rescue/catch clauses add 1 each.
+  # - for generators and filters add 1 each.
+  # - Boolean and/or/&&/|| operators add 1 each, including in guards.
+  # - Multiple clauses for the same MFA are aggregated by summing clause paths and decisions.
 
   @definition_kinds [:def, :defp, :defmacro, :defmacrop]
 
-  @doc """
-  Returns per-function complexity results for an Elixir source string.
-
-  Invalid source returns `{:error, :invalid_source}`. Valid source with no
-  analyzable function or macro bodies returns `{:ok, []}`.
-  """
+  @doc false
   def from_string(source) when is_binary(source) do
     case Code.string_to_quoted(source) do
       {:ok, quoted} ->
@@ -49,12 +35,7 @@ defmodule ExCrap.Complexity do
 
   def from_string(_source), do: {:error, :invalid_source}
 
-  @doc """
-  Reads one Elixir source file and returns per-function complexity results.
-
-  This helper analyzes a single caller-provided file only. Project-wide scanning
-  remains deferred.
-  """
+  @doc false
   def from_file(path) when is_binary(path) do
     case File.read(path) do
       {:ok, source} -> from_string(source)

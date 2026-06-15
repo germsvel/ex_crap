@@ -3,13 +3,16 @@ defmodule Mix.Tasks.Boundary.Spec.Check do
   use Boundary, classify_to: ExCrap.Mix
 
   @shortdoc "Verify Boundary spec snapshot"
-
-  @moduledoc """
+  @task_moduledoc """
   Verifies that `mix boundary.spec` matches `priv/boundary_spec.txt`.
 
   If the output changed, review the diff and run `mix boundary.spec.accept` only
   when the architecture change is intentional.
   """
+
+  @moduledoc false
+
+  # Internal maintenance task for verifying the checked-in Boundary spec snapshot.
 
   @impl Mix.Task
   def run([]) do
@@ -41,10 +44,14 @@ defmodule Mix.Tasks.Boundary.Spec.Check do
     end
   end
 
+  @doc false
   def run([arg | _args]) do
     Mix.raise("Unexpected argument: #{arg}")
   end
 
+  @doc false
   def shortdoc, do: @shortdoc
-  def moduledoc, do: @moduledoc
+
+  @doc false
+  def moduledoc, do: @task_moduledoc
 end
