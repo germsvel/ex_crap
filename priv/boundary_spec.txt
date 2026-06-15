@@ -1,0 +1,29 @@
+
+ExCrap
+  exports: BoundarySpec
+  deps: 
+
+ExCrap.Complexity
+  exports: 
+  deps: 
+
+ExCrap.Coverage
+  exports: 
+  deps: 
+
+ExCrap.Mix
+  exports: 
+  deps: ExCrap
+
+ExCrap.Report
+  exports: 
+  deps: ExCrap.Score
+
+ExCrap.Scanner
+  exports: 
+  deps: ExCrap.Complexity
+
+ExCrap.Score
+  exports: 
+  deps: 
+

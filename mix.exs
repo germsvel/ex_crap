@@ -17,7 +17,7 @@ defmodule ExCrap.MixProject do
           "test.coverage",
           "crap"
         ],
-        precommit: "test.crap",
+        precommit: ["test.crap", "boundary.spec.check"],
         mutate:
           "muex --mutators arithmetic,boolean,comparison,conditional,function_call,literal,return_value",
         "mutate.fast":
@@ -37,6 +37,6 @@ defmodule ExCrap.MixProject do
   end
 
   def cli do
-    [preferred_envs: [precommit: :test, "test.crap": :test]]
+    [preferred_envs: [precommit: :test, "test.crap": :test, "boundary.spec.check": :test]]
   end
 end
