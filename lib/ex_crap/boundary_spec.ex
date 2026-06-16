@@ -19,6 +19,7 @@ defmodule ExCrap.Mix.BoundarySpec do
     end
   end
 
+  # sobelow_skip ["Traversal"]
   def check_snapshot(current, path \\ snapshot_path())
       when is_binary(current) and is_binary(path) do
     case File.read(path) do
@@ -29,6 +30,7 @@ defmodule ExCrap.Mix.BoundarySpec do
     end
   end
 
+  # sobelow_skip ["Traversal"]
   def write_snapshot(current, path \\ snapshot_path())
       when is_binary(current) and is_binary(path) do
     path

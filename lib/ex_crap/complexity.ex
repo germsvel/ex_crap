@@ -36,6 +36,7 @@ defmodule ExCrap.Complexity do
   def from_string(_source), do: {:error, :invalid_source}
 
   @doc false
+  # sobelow_skip ["Traversal"]
   def from_file(path) when is_binary(path) do
     case File.read(path) do
       {:ok, source} -> from_string(source)

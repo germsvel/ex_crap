@@ -29,9 +29,15 @@ defmodule ExCrap.Coverage do
 
   defp normalize_key(module, function, arity) do
     case Atom.to_string(function) do
-      "MACRO-" <> name -> {module, String.to_atom(name), arity - 1}
+      "MACRO-" <> name -> normalize_macro_key(module, function, name, arity)
       _other -> {module, function, arity}
     end
+  end
+
+  defp normalize_macro_key(module, function, name, arity) do
+    {module, String.to_existing_atom(name), arity - 1}
+  rescue
+    ArgumentError -> {module, function, arity}
   end
 
   defp ensure_cover_started do

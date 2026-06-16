@@ -45,6 +45,17 @@ defmodule ExCrap.CoverageTest do
       assert result[{Example, :debug, 1}] == 100.0
       assert result[{Example, :regular, 1}] == 50.0
     end
+
+    test "does not create atoms while normalizing unknown MACRO-prefixed function names" do
+      name = "unsafe_macro_#{System.unique_integer([:positive])}"
+      macro_name = String.to_atom("MACRO-#{name}")
+      rows = [{{Example, macro_name, 2}, {10, 0}}]
+
+      result = ExCrap.Coverage.from_function_rows(rows)
+
+      assert result == %{{Example, macro_name, 2} => 100.0}
+      assert_raise ArgumentError, fn -> String.to_existing_atom(name) end
+    end
   end
 
   describe "from_coverdata/1" do

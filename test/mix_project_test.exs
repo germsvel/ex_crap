@@ -1,14 +1,15 @@
 defmodule ExCrap.MixProjectTest do
   use ExUnit.Case
 
-  test "precommit runs format before test.crap, boundary spec check, and credo" do
+  test "precommit runs format before test.crap, boundary spec check, credo, and sobelow" do
     aliases = ExCrap.MixProject.project() |> Keyword.fetch!(:aliases)
 
     assert Keyword.fetch!(aliases, :precommit) == [
              "format",
              "test.crap",
              "boundary.spec.check",
-             "credo --strict"
+             "credo --strict",
+             "sobelow --skip"
            ]
   end
 
@@ -22,13 +23,14 @@ defmodule ExCrap.MixProjectTest do
            ]
   end
 
-  test "boundary spec check runs in test environment from CLI aliases" do
+  test "precommit aliases run in test environment from CLI aliases" do
     preferred_envs = ExCrap.MixProject.cli() |> Keyword.fetch!(:preferred_envs)
 
     assert Keyword.fetch!(preferred_envs, :precommit) == :test
     assert Keyword.fetch!(preferred_envs, :"test.crap") == :test
     assert Keyword.fetch!(preferred_envs, :"boundary.spec.check") == :test
     assert Keyword.fetch!(preferred_envs, :credo) == :test
+    assert Keyword.fetch!(preferred_envs, :sobelow) == :test
   end
 
   test "application config starts coverage tools for dev and test usage" do

@@ -24,7 +24,13 @@ defmodule ExCrap.MixProject do
           "test.coverage",
           "crap"
         ],
-        precommit: ["format", "test.crap", "boundary.spec.check", "credo --strict"],
+        precommit: [
+          "format",
+          "test.crap",
+          "boundary.spec.check",
+          "credo --strict",
+          "sobelow --skip"
+        ],
         mutate:
           "muex --mutators arithmetic,boolean,comparison,conditional,function_call,literal,return_value",
         "mutate.fast":
@@ -36,7 +42,8 @@ defmodule ExCrap.MixProject do
         {:muex, "~> 0.6", only: [:dev, :test], runtime: false},
         {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
         {:quokka, "~> 2.13", only: [:dev, :test], runtime: false},
-        {:boundary, "~> 0.10", runtime: false}
+        {:boundary, "~> 0.10", runtime: false},
+        {:sobelow, "~> 0.14", only: [:dev, :test], runtime: false}
       ]
     ]
   end
@@ -51,7 +58,8 @@ defmodule ExCrap.MixProject do
         precommit: :test,
         "test.crap": :test,
         "boundary.spec.check": :test,
-        credo: :test
+        credo: :test,
+        sobelow: :test
       ]
     ]
   end
