@@ -10,30 +10,9 @@ Add `ex_crap` to your list of dependencies in `mix.exs`:
 {:ex_crap, "~> 0.1.0", only: [:dev, :test], runtime: false}
 ```
 
-## Library API
-
-Calculate a score directly:
-
-```elixir
-ExCrap.score(4, 75)
-# {:ok, 4.25}
-```
-
-Analyze source with explicit coverage data:
-
-```elixir
-coverage = %{{Example, :visible?, 1} => 75}
-ExCrap.analyze_string(source, coverage)
-```
-
-Analyze one source file with explicit coverage data:
-
-```elixir
-coverage = %{{Example, :visible?, 1} => 75}
-ExCrap.analyze_file("lib/example.ex", coverage)
-```
-
 ## Mix Task
+
+The preferred way to use ExCrap is through the `mix crap` task, which scans a project from persisted Mix/Erlang coverage data and enforces a CRAP score threshold.
 
 Generate coverage data first:
 
@@ -80,6 +59,31 @@ The task scans root project files matching `lib/**/*.ex` by default. Pass `--pat
 Compact output prints green checkmarks for functions at or below the configured threshold and always prints a summary. Verbose output includes file, module, function/arity, complexity, coverage, CRAP score, and status. File paths are displayed relative to the project root. Functions with no matching coverage entry are scored pessimistically as `0%` covered.
 
 The task fails with a non-zero exit status when any scored function is above the configured threshold or any score calculation error occurs. Missing coverdata input remains a usage error when analyzable functions exist, because no CRAP scores can be calculated without an importable coverage file.
+
+## Library API
+
+Use the library API when you need direct score calculation or source analysis with explicit coverage data.
+
+Calculate a score directly:
+
+```elixir
+ExCrap.score(4, 75)
+# {:ok, 4.25}
+```
+
+Analyze source with explicit coverage data:
+
+```elixir
+coverage = %{{Example, :visible?, 1} => 75}
+ExCrap.analyze_string(source, coverage)
+```
+
+Analyze one source file with explicit coverage data:
+
+```elixir
+coverage = %{{Example, :visible?, 1} => 75}
+ExCrap.analyze_file("lib/example.ex", coverage)
+```
 
 ## Metric Interpretation
 

@@ -2,12 +2,13 @@ defmodule ExCrap do
   @moduledoc """
   Public API for calculating CRAP scores from complexity and coverage data.
 
+  The preferred project-level workflow is `mix crap`, which scans exported
+  Mix/Erlang coverdata, enforces a maximum CRAP score threshold (default `30`),
+  and fails with a non-zero exit when any function exceeds it or any score
+  calculation error occurs.
+
   Use `score/2` to calculate a CRAP score directly. Use `analyze_string/2` or
   `analyze_file/2` to analyze Elixir source with explicit function coverage data.
-
-  Use `mix crap` for a project scan from exported Mix/Erlang coverdata. The task
-  enforces a maximum CRAP score threshold (default `30`) and fails with a non-zero
-  exit when any function exceeds it or any score calculation error occurs.
   """
 
   use Boundary
