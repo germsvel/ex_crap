@@ -1,6 +1,4 @@
 defmodule ExCrap do
-  use Boundary
-
   @moduledoc """
   Public API for calculating CRAP scores from complexity and coverage data.
 
@@ -11,6 +9,8 @@ defmodule ExCrap do
   enforces a maximum CRAP score threshold (default `30`) and fails with a non-zero
   exit when any function exceeds it or any score calculation error occurs.
   """
+
+  use Boundary
 
   alias ExCrap.Complexity
   alias ExCrap.Coverage

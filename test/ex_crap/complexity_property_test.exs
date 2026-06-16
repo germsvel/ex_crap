@@ -755,7 +755,7 @@ defmodule ExCrap.ComplexityPropertyTest do
   end
 
   defp render_module(module, lines) do
-    body = lines |> Enum.map(&"  #{&1}") |> Enum.join("\n")
+    body = Enum.map_join(lines, "\n", &"  #{&1}")
 
     """
     defmodule #{module} do
@@ -786,8 +786,7 @@ defmodule ExCrap.ComplexityPropertyTest do
 
   defp render_body(constructs) do
     constructs
-    |> Enum.map(&render_construct/1)
-    |> Enum.join("\n")
+    |> Enum.map_join("\n", &render_construct/1)
     |> String.split("\n")
     |> Enum.map_join("\n", &"  #{&1}")
   end
@@ -820,13 +819,11 @@ defmodule ExCrap.ComplexityPropertyTest do
          clause_guard_operators: guard_operators
        }) do
     clauses =
-      1..branches
-      |> Enum.map(fn index ->
+      Enum.map_join(1..branches, "\n", fn index ->
         operators = Enum.at(guard_operators, index - 1, [])
 
         "#{index}#{render_guard(operators)} -> :branch_#{index}"
       end)
-      |> Enum.join("\n")
 
     """
     case value do
@@ -842,12 +839,10 @@ defmodule ExCrap.ComplexityPropertyTest do
          clause_guard_operators: guard_operators
        }) do
     clauses =
-      1..branches
-      |> Enum.map(fn index ->
+      Enum.map_join(1..branches, "\n", fn index ->
         operators = Enum.at(guard_operators, index - 1, [])
         "#{boolean_chain(operators)} -> :branch_#{index}"
       end)
-      |> Enum.join("\n")
 
     """
     cond do
@@ -889,9 +884,7 @@ defmodule ExCrap.ComplexityPropertyTest do
       if construct.filters == 0 do
         ""
       else
-        1..construct.filters
-        |> Enum.map(fn index -> "filter_#{index}" end)
-        |> Enum.join(", ")
+        Enum.map_join(1..construct.filters, ", ", fn index -> "filter_#{index}" end)
       end
 
     qualifier_source = Enum.reject([qualifiers, filters], &(&1 == "")) |> Enum.join(", ")
@@ -912,12 +905,10 @@ defmodule ExCrap.ComplexityPropertyTest do
 
   defp render_construct(%{kind: :receive} = construct) do
     clauses =
-      1..construct.branches
-      |> Enum.map(fn index ->
+      Enum.map_join(1..construct.branches, "\n", fn index ->
         operators = Enum.at(construct.clause_guard_operators, index - 1, [])
         "{:message, #{index}}#{render_guard(operators)} -> :message_#{index}"
       end)
-      |> Enum.join("\n")
 
     """
     receive do
@@ -929,12 +920,10 @@ defmodule ExCrap.ComplexityPropertyTest do
 
   defp render_construct(%{kind: :fn} = construct) do
     clauses =
-      1..construct.clauses
-      |> Enum.map(fn index ->
+      Enum.map_join(1..construct.clauses, "\n", fn index ->
         operators = Enum.at(construct.clause_guard_operators, index - 1, [])
         "#{index}#{render_guard(operators)} -> :clause_#{index}"
       end)
-      |> Enum.join("\n")
 
     """
     fn
@@ -946,12 +935,10 @@ defmodule ExCrap.ComplexityPropertyTest do
 
   defp render_construct(%{kind: :nested_if_case} = construct) do
     clauses =
-      1..construct.case_branches
-      |> Enum.map(fn index ->
+      Enum.map_join(1..construct.case_branches, "\n", fn index ->
         operators = Enum.at(construct.case_guard_operators, index - 1, [])
         "#{index}#{render_guard(operators)} -> :branch_#{index}"
       end)
-      |> Enum.join("\n")
 
     """
     if #{boolean_chain(construct.if_operators)} do
@@ -969,12 +956,10 @@ defmodule ExCrap.ComplexityPropertyTest do
     generators = Enum.map_join(1..construct.with_generators, ",\n", &":ok <- nested_step_#{&1}")
 
     clauses =
-      1..construct.cond_branches
-      |> Enum.map(fn index ->
+      Enum.map_join(1..construct.cond_branches, "\n", fn index ->
         operators = Enum.at(construct.cond_guard_operators, index - 1, [])
         "#{boolean_chain(operators)} -> :branch_#{index}"
       end)
-      |> Enum.join("\n")
 
     """
     with #{generators} do
@@ -997,11 +982,9 @@ defmodule ExCrap.ComplexityPropertyTest do
 
   defp render_try_rescue(branches) do
     clauses =
-      1..branches
-      |> Enum.map(fn index ->
+      Enum.map_join(1..branches, "\n", fn index ->
         "error in RuntimeError -> {:rescue, error, #{index}}"
       end)
-      |> Enum.join("\n")
 
     "rescue\n#{indent(clauses, 2)}\n"
   end
@@ -1010,12 +993,10 @@ defmodule ExCrap.ComplexityPropertyTest do
 
   defp render_try_catch(branches, guard_operators) do
     clauses =
-      1..branches
-      |> Enum.map(fn index ->
+      Enum.map_join(1..branches, "\n", fn index ->
         operators = Enum.at(guard_operators, index - 1, [])
         "kind, reason#{render_guard(operators)} -> {:catch, kind, reason, #{index}}"
       end)
-      |> Enum.join("\n")
 
     "catch\n#{indent(clauses, 2)}\n"
   end
@@ -1030,13 +1011,11 @@ defmodule ExCrap.ComplexityPropertyTest do
 
   defp render_with_else(branches, guard_operators) do
     clauses =
-      1..branches
-      |> Enum.map(fn index ->
+      Enum.map_join(1..branches, "\n", fn index ->
         operators = Enum.at(guard_operators, index - 1, [])
 
         ":error#{render_guard(operators)} -> :error_#{index}"
       end)
-      |> Enum.join("\n")
 
     "else\n#{indent(clauses, 2)}\n"
   end

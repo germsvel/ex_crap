@@ -1,7 +1,7 @@
 defmodule ExCrap.Complexity do
-  use Boundary
-
   @moduledoc false
+
+  use Boundary
 
   # Parses source with `Code.string_to_quoted/1`; analyzed code is not compiled or
   # evaluated. Results include module, function, arity, line, and complexity.
@@ -195,8 +195,7 @@ defmodule ExCrap.Complexity do
          _current_module,
          _in_executable?,
          _implemented_definitions
-       ),
-       do: true
+       ), do: true
 
   defp malformed_executable_container?(
          {:defimpl, _meta, args},
@@ -310,8 +309,7 @@ defmodule ExCrap.Complexity do
          _current_module,
          _in_executable?,
          _implemented_definitions
-       ),
-       do: false
+       ), do: false
 
   defp module_name_ast?(module_ast) when is_atom(module_ast), do: valid_module_atom?(module_ast)
 
@@ -418,8 +416,7 @@ defmodule ExCrap.Complexity do
 
   defp definition_key(kind, {:when, _meta, [head | _guards]}), do: definition_key(kind, head)
 
-  defp definition_key(kind, {name, _meta, nil}) when is_atom(name),
-    do: {:ok, {kind, name, 0}}
+  defp definition_key(kind, {name, _meta, nil}) when is_atom(name), do: {:ok, {kind, name, 0}}
 
   defp definition_key(kind, {name, _meta, args}) when is_atom(name) and is_list(args),
     do: {:ok, {kind, name, length(args)}}
@@ -508,13 +505,12 @@ defmodule ExCrap.Complexity do
   end
 
   defp alias_declaration_module_name(alias_ast, current_module) do
-    parent = if current_module_reference?(alias_ast), do: current_module, else: nil
+    parent = if current_module_reference?(alias_ast), do: current_module
 
     module_name(alias_ast, parent)
   end
 
-  defp defimpl_parts([protocol_ast, opts, [do: body]], current_module)
-       when is_list(opts) do
+  defp defimpl_parts([protocol_ast, opts, [do: body]], current_module) when is_list(opts) do
     with {:ok, for_ast} <- defimpl_for_ast(opts, current_module) do
       {:ok, protocol_ast, for_ast, body}
     end
@@ -525,13 +521,10 @@ defmodule ExCrap.Complexity do
     {:ok, protocol_ast, current_module, body}
   end
 
-  defp defimpl_parts([protocol_ast, opts], _current_module)
-       when is_list(opts) do
+  defp defimpl_parts([protocol_ast, opts], _current_module) when is_list(opts) do
     with {:ok, for_ast} <- Keyword.fetch(opts, :for),
          {:ok, body} <- Keyword.fetch(opts, :do) do
       {:ok, protocol_ast, for_ast, body}
-    else
-      :error -> :error
     end
   end
 

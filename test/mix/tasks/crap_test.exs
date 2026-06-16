@@ -3,6 +3,8 @@ defmodule Mix.Tasks.CrapTest do
 
   import ExUnit.CaptureIO
 
+  alias Mix.Tasks.Crap
+
   setup context do
     if tmp_dir = context[:tmp_dir] do
       Process.put(:tmp_dir, tmp_dir)
@@ -13,25 +15,25 @@ defmodule Mix.Tasks.CrapTest do
 
   describe "task metadata" do
     test "exposes mix task docs" do
-      assert Mix.Tasks.Crap.shortdoc() == "Print CRAP scores for project source"
+      assert Crap.shortdoc() == "Print CRAP scores for project source"
 
-      assert Mix.Tasks.Crap.moduledoc() =~ "mix crap"
-      assert Mix.Tasks.Crap.moduledoc() =~ "mix test --cover --export-coverage default"
-      assert Mix.Tasks.Crap.moduledoc() =~ "--coverdata"
-      assert Mix.Tasks.Crap.moduledoc() =~ "--max-score"
-      assert Mix.Tasks.Crap.moduledoc() =~ "--path"
-      assert Mix.Tasks.Crap.moduledoc() =~ "--verbose"
-      assert Mix.Tasks.Crap.moduledoc() =~ "default: 30"
-      assert Mix.Tasks.Crap.moduledoc() =~ "default: lib"
-      assert Mix.Tasks.Crap.moduledoc() =~ "lib/**/*.ex"
-      assert Mix.Tasks.Crap.moduledoc() =~ "mix crap --path path/to/source"
+      assert Crap.moduledoc() =~ "mix crap"
+      assert Crap.moduledoc() =~ "mix test --cover --export-coverage default"
+      assert Crap.moduledoc() =~ "--coverdata"
+      assert Crap.moduledoc() =~ "--max-score"
+      assert Crap.moduledoc() =~ "--path"
+      assert Crap.moduledoc() =~ "--verbose"
+      assert Crap.moduledoc() =~ "default: 30"
+      assert Crap.moduledoc() =~ "default: lib"
+      assert Crap.moduledoc() =~ "lib/**/*.ex"
+      assert Crap.moduledoc() =~ "mix crap --path path/to/source"
 
-      assert Mix.Tasks.Crap.moduledoc() =~
+      assert Crap.moduledoc() =~
                "It skips\nvalid files with no analyzable function or macro bodies"
 
-      assert Mix.Tasks.Crap.moduledoc() =~ ~r/Missing function\s+coverage is scored as 0%/
-      assert Mix.Tasks.Crap.moduledoc() =~ "score calculation error"
-      refute Mix.Tasks.Crap.moduledoc() =~ "report-only"
+      assert Crap.moduledoc() =~ ~r/Missing function\s+coverage is scored as 0%/
+      assert Crap.moduledoc() =~ "score calculation error"
+      refute Crap.moduledoc() =~ "report-only"
     end
   end
 
@@ -39,7 +41,7 @@ defmodule Mix.Tasks.CrapTest do
     @describetag :tmp_dir
 
     test "prints usage for help" do
-      output = capture_io(fn -> Mix.Tasks.Crap.run(["--help"]) end)
+      output = capture_io(fn -> Crap.run(["--help"]) end)
 
       assert output =~ "Usage: mix crap"
       assert output =~ "mix test --cover --export-coverage default"
@@ -59,20 +61,20 @@ defmodule Mix.Tasks.CrapTest do
         assert_raise Mix.Error,
                      "Invalid --max-score: #{value}. Expected a positive number.",
                      fn ->
-                       Mix.Tasks.Crap.run(["--max-score", value])
+                       Crap.run(["--max-score", value])
                      end
       end
     end
 
     test "raises for unknown options" do
       assert_raise Mix.Error, ~r/Unknown option: --wat/, fn ->
-        Mix.Tasks.Crap.run(["--wat"])
+        Crap.run(["--wat"])
       end
     end
 
     test "raises for unexpected positional arguments" do
       assert_raise Mix.Error, "Unexpected argument: foo", fn ->
-        Mix.Tasks.Crap.run(["foo"])
+        Crap.run(["foo"])
       end
     end
 
@@ -97,7 +99,7 @@ defmodule Mix.Tasks.CrapTest do
     test "prints guidance when custom path has no source files" do
       in_tmp("crap-custom-path-empty", fn root ->
         output =
-          capture_io(fn -> Mix.Tasks.Crap.run(["--path", source_path(root, "fixtures")]) end)
+          capture_io(fn -> Crap.run(["--path", source_path(root, "fixtures")]) end)
 
         assert output =~ "No root #{displayed_source_path(root, "fixtures")}/**/*.ex files found"
       end)
@@ -130,7 +132,7 @@ defmodule Mix.Tasks.CrapTest do
         """)
 
         output =
-          capture_io(fn -> Mix.Tasks.Crap.run(["--path", source_path(root, "fixtures")]) end)
+          capture_io(fn -> Crap.run(["--path", source_path(root, "fixtures")]) end)
 
         assert output =~
                  "No analyzable function bodies found in root #{displayed_source_path(root, "fixtures")}/**/*.ex files"
@@ -253,7 +255,7 @@ defmodule Mix.Tasks.CrapTest do
 
           output =
             capture_io(fn ->
-              Mix.Tasks.Crap.run([
+              Crap.run([
                 "--coverdata",
                 coverdata_path,
                 "--path",
@@ -476,12 +478,12 @@ defmodule Mix.Tasks.CrapTest do
 
     cover_active? = cover_active?()
 
-    unless cover_active?, do: assert({:ok, ExCrap} = :cover.compile_beam(ExCrap))
+    if !cover_active?, do: assert({:ok, ExCrap} = :cover.compile_beam(ExCrap))
 
     assert {:ok, 1.0} = ExCrap.score(1, 100)
     assert :ok = :cover.export(String.to_charlist(coverdata_path))
 
-    unless cover_active?, do: :cover.stop()
+    if !cover_active?, do: :cover.stop()
 
     try do
       fun.(coverdata_path)
@@ -507,7 +509,7 @@ defmodule Mix.Tasks.CrapTest do
   end
 
   defp run_with_source(root, args \\ []) do
-    Mix.Tasks.Crap.run(["--path", source_path(root) | args])
+    Crap.run(["--path", source_path(root) | args])
   end
 
   defp source_path(root, relative_path \\ "lib") do

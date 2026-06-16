@@ -1,38 +1,39 @@
 defmodule Mix.Tasks.Boundary.Spec.Accept do
+  @shortdoc "Accept current Boundary spec snapshot"
+  @moduledoc false
+
   use Mix.Task
   use Boundary, classify_to: ExCrap.Mix
 
-  @shortdoc "Accept current Boundary spec snapshot"
+  alias ExCrap.Mix.BoundarySpec
+
   @task_moduledoc """
   Writes the current `mix boundary.spec` output to `priv/boundary_spec.txt`.
 
   This task requires interactive human approval. It has no non-interactive approval flag.
   """
 
-  @moduledoc false
-
   # Internal maintenance task for accepting the checked-in Boundary spec snapshot.
 
   @impl Mix.Task
   def run([]) do
-    unless ExCrap.Mix.BoundarySpec.interactive?() do
+    if !BoundarySpec.interactive?() do
       Mix.raise("Boundary spec acceptance requires interactive human approval.")
     end
 
-    with {:ok, current} <- ExCrap.Mix.BoundarySpec.current_spec() do
-      show_existing_diff(current)
-      confirm!()
+    case BoundarySpec.current_spec() do
+      {:ok, current} ->
+        show_existing_diff(current)
+        confirm!()
 
-      case ExCrap.Mix.BoundarySpec.write_snapshot(current) do
-        :ok ->
-          Mix.shell().info(
-            "Updated Boundary spec snapshot: #{ExCrap.Mix.BoundarySpec.snapshot_path()}"
-          )
+        case BoundarySpec.write_snapshot(current) do
+          :ok ->
+            Mix.shell().info("Updated Boundary spec snapshot: #{BoundarySpec.snapshot_path()}")
 
-        {:error, reason} ->
-          Mix.raise("Unable to write Boundary spec snapshot: #{inspect(reason)}")
-      end
-    else
+          {:error, reason} ->
+            Mix.raise("Unable to write Boundary spec snapshot: #{inspect(reason)}")
+        end
+
       {:error, reason} ->
         Mix.raise("Unable to produce Boundary spec: #{inspect(reason)}")
     end
@@ -50,19 +51,19 @@ defmodule Mix.Tasks.Boundary.Spec.Accept do
   def moduledoc, do: @task_moduledoc
 
   defp show_existing_diff(current) do
-    case File.read(ExCrap.Mix.BoundarySpec.snapshot_path()) do
+    case File.read(BoundarySpec.snapshot_path()) do
       {:ok, ^current} ->
         Mix.shell().info("Boundary spec snapshot already matches current output.")
 
       {:ok, expected} ->
         Mix.shell().info(
-          "Boundary spec change to accept:\n\n" <> ExCrap.Mix.BoundarySpec.diff(expected, current)
+          "Boundary spec change to accept:\n\n" <> BoundarySpec.diff(expected, current)
         )
 
       {:error, :enoent} ->
         Mix.shell().info(
-          "Boundary spec snapshot will be created: #{ExCrap.Mix.BoundarySpec.snapshot_path()}\n\n" <>
-            ExCrap.Mix.BoundarySpec.diff("", current)
+          "Boundary spec snapshot will be created: #{BoundarySpec.snapshot_path()}\n\n" <>
+            BoundarySpec.diff("", current)
         )
 
       {:error, reason} ->
@@ -72,11 +73,11 @@ defmodule Mix.Tasks.Boundary.Spec.Accept do
 
   defp confirm! do
     confirmation =
-      ExCrap.Mix.BoundarySpec.read_confirmation()
+      BoundarySpec.read_confirmation()
       |> to_string()
       |> String.trim()
 
-    unless confirmation == ExCrap.Mix.BoundarySpec.approval_phrase() do
+    if confirmation != BoundarySpec.approval_phrase() do
       Mix.raise("Boundary spec acceptance was not confirmed.")
     end
   end

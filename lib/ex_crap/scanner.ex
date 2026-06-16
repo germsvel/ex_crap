@@ -1,7 +1,7 @@
 defmodule ExCrap.Scanner do
-  use Boundary, deps: [ExCrap.Complexity]
-
   @moduledoc false
+
+  use Boundary, deps: [ExCrap.Complexity]
 
   # Scans root `source_path/**/*.ex` files for project-level CRAP analysis.
 

@@ -500,12 +500,12 @@ defmodule CrapTest do
 
     cover_active? = cover_active?()
 
-    unless cover_active?, do: assert({:ok, ExCrap} = :cover.compile_beam(ExCrap))
+    if !cover_active?, do: assert({:ok, ExCrap} = :cover.compile_beam(ExCrap))
 
     assert {:ok, 1.0} = ExCrap.score(1, 100)
     assert :ok = :cover.export(String.to_charlist(coverdata_path))
 
-    unless cover_active?, do: :cover.stop()
+    if !cover_active?, do: :cover.stop()
 
     try do
       fun.(coverdata_path)

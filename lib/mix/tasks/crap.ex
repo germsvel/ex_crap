@@ -1,7 +1,4 @@
 defmodule Mix.Tasks.Crap do
-  use Mix.Task
-  use Boundary, classify_to: ExCrap.Mix
-
   @shortdoc "Print CRAP scores for project source"
 
   @moduledoc """
@@ -32,6 +29,9 @@ defmodule Mix.Tasks.Crap do
   Missing coverdata input is a usage error when analyzable functions exist. Use
   `--verbose` to print the full scored table on passing runs.
   """
+
+  use Mix.Task
+  use Boundary, classify_to: ExCrap.Mix
 
   @impl Mix.Task
   def run(args) do
@@ -154,7 +154,7 @@ defmodule Mix.Tasks.Crap do
   defp enforce_threshold!(rows, max_score) do
     failures = ExCrap.failures(rows, max_score)
 
-    unless Enum.all?(failures, fn {_key, rows} -> rows == [] end) do
+    if !Enum.all?(failures, fn {_key, rows} -> rows == [] end) do
       Mix.raise(failure_message(failures, max_score))
     end
   end

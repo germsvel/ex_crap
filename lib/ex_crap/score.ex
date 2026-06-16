@@ -1,7 +1,7 @@
 defmodule ExCrap.Score do
-  use Boundary
-
   @moduledoc false
+
+  use Boundary
 
   # CRAP = complexity^2 * (1 - coverage_percent / 100)^3 + complexity.
 

@@ -20,12 +20,11 @@ defmodule ExCrap.MixProject do
       aliases: [
         doc: "docs",
         "test.crap": [
-          "format",
           "test --cover --export-coverage default",
           "test.coverage",
           "crap"
         ],
-        precommit: ["test.crap", "boundary.spec.check"],
+        precommit: ["format", "test.crap", "boundary.spec.check", "credo --strict"],
         mutate:
           "muex --mutators arithmetic,boolean,comparison,conditional,function_call,literal,return_value",
         "mutate.fast":
@@ -35,6 +34,8 @@ defmodule ExCrap.MixProject do
         {:stream_data, "~> 1.3", only: :test},
         {:ex_doc, "~> 0.34", only: :dev, runtime: false},
         {:muex, "~> 0.6", only: [:dev, :test], runtime: false},
+        {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+        {:quokka, "~> 2.13", only: [:dev, :test], runtime: false},
         {:boundary, "~> 0.10", runtime: false}
       ]
     ]
@@ -45,7 +46,14 @@ defmodule ExCrap.MixProject do
   end
 
   def cli do
-    [preferred_envs: [precommit: :test, "test.crap": :test, "boundary.spec.check": :test]]
+    [
+      preferred_envs: [
+        precommit: :test,
+        "test.crap": :test,
+        "boundary.spec.check": :test,
+        credo: :test
+      ]
+    ]
   end
 
   defp description do

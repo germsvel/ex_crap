@@ -1,7 +1,7 @@
 defmodule ExCrap.Report do
-  use Boundary, deps: [ExCrap.Score]
-
   @moduledoc false
+
+  use Boundary, deps: [ExCrap.Score]
 
   # Builds CRAP report rows by combining complexity results with coverage data.
 
@@ -137,8 +137,7 @@ defmodule ExCrap.Report do
   defp green(line),
     do: IO.ANSI.format_fragment([:green, line, :reset], true) |> IO.iodata_to_binary()
 
-  defp red(line),
-    do: IO.ANSI.format_fragment([:red, line, :reset], true) |> IO.iodata_to_binary()
+  defp red(line), do: IO.ANSI.format_fragment([:red, line, :reset], true) |> IO.iodata_to_binary()
 
   defp color(line, :green), do: green(line)
   defp color(line, :red), do: red(line)

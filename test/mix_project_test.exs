@@ -1,10 +1,25 @@
 defmodule ExCrap.MixProjectTest do
   use ExUnit.Case
 
-  test "precommit runs test.crap before boundary spec check" do
+  test "precommit runs format before test.crap, boundary spec check, and credo" do
     aliases = ExCrap.MixProject.project() |> Keyword.fetch!(:aliases)
 
-    assert Keyword.fetch!(aliases, :precommit) == ["test.crap", "boundary.spec.check"]
+    assert Keyword.fetch!(aliases, :precommit) == [
+             "format",
+             "test.crap",
+             "boundary.spec.check",
+             "credo --strict"
+           ]
+  end
+
+  test "test.crap runs coverage, coverage report, and crap score checks" do
+    aliases = ExCrap.MixProject.project() |> Keyword.fetch!(:aliases)
+
+    assert Keyword.fetch!(aliases, :"test.crap") == [
+             "test --cover --export-coverage default",
+             "test.coverage",
+             "crap"
+           ]
   end
 
   test "boundary spec check runs in test environment from CLI aliases" do
@@ -13,6 +28,7 @@ defmodule ExCrap.MixProjectTest do
     assert Keyword.fetch!(preferred_envs, :precommit) == :test
     assert Keyword.fetch!(preferred_envs, :"test.crap") == :test
     assert Keyword.fetch!(preferred_envs, :"boundary.spec.check") == :test
+    assert Keyword.fetch!(preferred_envs, :credo) == :test
   end
 
   test "application config starts coverage tools for dev and test usage" do

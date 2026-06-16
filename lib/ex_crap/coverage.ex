@@ -1,7 +1,7 @@
 defmodule ExCrap.Coverage do
-  use Boundary
-
   @moduledoc false
+
+  use Boundary
 
   # Imports Erlang/Mix coverdata and normalizes function coverage percentages by MFA.
 
@@ -12,8 +12,6 @@ defmodule ExCrap.Coverage do
            :ok <- :cover.import(String.to_charlist(path)),
            modules when is_list(modules) <- :cover.imported_modules() do
         {:ok, coverage_for_modules(modules)}
-      else
-        {:error, reason} -> {:error, reason}
       end
     else
       {:error, {:coverdata_unreadable, path}}
@@ -47,14 +45,16 @@ defmodule ExCrap.Coverage do
 
   defp coverage_for_modules(modules) do
     without_cover_output(fn ->
-      Enum.flat_map(modules, fn module ->
-        case :cover.analyse(module, :coverage, :function) do
-          {:ok, rows} -> rows
-          {:error, _reason} -> []
-        end
-      end)
+      Enum.flat_map(modules, &coverage_rows_for_module/1)
     end)
     |> from_function_rows()
+  end
+
+  defp coverage_rows_for_module(module) do
+    case :cover.analyse(module, :coverage, :function) do
+      {:ok, rows} -> rows
+      {:error, _reason} -> []
+    end
   end
 
   defp without_cover_output(fun) do

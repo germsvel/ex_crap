@@ -55,12 +55,12 @@ defmodule ExCrap.CoverageTest do
     } do
       path = Path.join(tmp_dir, "crap-coverage.coverdata")
 
-      unless cover_active?, do: assert({:ok, ExCrap} = :cover.compile_beam(ExCrap))
+      if !cover_active?, do: assert({:ok, ExCrap} = :cover.compile_beam(ExCrap))
 
       assert {:ok, 1.0} = ExCrap.score(1, 100)
       assert :ok = :cover.export(String.to_charlist(path))
 
-      unless cover_active? do
+      if !cover_active? do
         :cover.stop()
 
         assert {:ok, coverage} = ExCrap.Coverage.from_coverdata(path)
