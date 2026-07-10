@@ -575,6 +575,10 @@ defmodule ExCrap.Complexity do
   defp module_name({:__aliases__, _meta, parts}, parent), do: Module.concat([parent | parts])
   defp module_name(module, _parent) when is_atom(module), do: module
 
+  # Bare `__MODULE__` (e.g. `alias __MODULE__, as: Foo`) resolves to the current
+  # module; nil when there is no enclosing module context.
+  defp module_name({:__MODULE__, _meta, _ctx}, parent), do: parent
+
   defp module_name(
          {{:., _dot_meta, [{:__aliases__, _meta, [:Module]}, :concat]}, _call_meta, args},
          current_module
@@ -583,6 +587,11 @@ defmodule ExCrap.Complexity do
     |> module_concat_parts(current_module)
     |> Module.concat()
   end
+
+  # Defensive fallback: an unrecognized alias-target AST resolves to no module
+  # rather than crashing the whole analysis run. Only affects alias-based
+  # complexity attribution for that one alias; never aborts scoring.
+  defp module_name(_ast, _parent), do: nil
 
   defp module_concat_parts([parts], current_module) when is_list(parts),
     do: Enum.map(parts, &module_concat_part(&1, current_module))
@@ -707,6 +716,8 @@ defmodule ExCrap.Complexity do
     Enum.any?(List.flatten(args), &current_module_reference?/1)
   end
 
+  defp current_module_reference?({:__MODULE__, _meta, _ctx}), do: true
+
   defp current_module_reference?(_ast), do: false
 
   defp function_name_arity_and_guards({:when, _meta, [head | guards]}) do
@@ -769,7 +780,7 @@ defmodule ExCrap.Complexity do
 
   defp branch_count(args), do: args |> keyword_value(:do) |> arrow_count()
 
-  defp keyword_value(args, key) do
+  defp keyword_value(args, key) when is_list(args) do
     args
     |> Enum.reverse()
     |> Enum.find(&(Keyword.keyword?(&1) and Keyword.has_key?(&1, key)))
@@ -778,6 +789,10 @@ defmodule ExCrap.Complexity do
       keyword -> Keyword.get(keyword, key)
     end
   end
+
+  # Macro-generated `case`/`cond`/`with`/`try`/`receive` nodes can carry a
+  # non-list `args` (e.g. `nil`). Treat those as "no matching keyword".
+  defp keyword_value(_args, _key), do: nil
 
   defp arrow_count(clauses) when is_list(clauses),
     do: Enum.count(clauses, &match?({:->, _meta, _clause}, &1))
