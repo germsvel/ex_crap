@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+changelog_file="CHANGELOG.md"
+if [[ ! -f "$changelog_file" ]] || [[ $(head -n 1 "$changelog_file") != "# Changelog" ]]; then
+  echo "Expected a CHANGELOG.md beginning with '# Changelog'" >&2
+  exit 1
+fi
+
+if ! last_release_tag=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null) ||
+   [[ ! $last_release_tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "No reachable release tag (vMAJOR.MINOR.PATCH) found; cannot update the changelog" >&2
+  exit 1
+fi
+
+range="${last_release_tag}..HEAD"
+temp_file=$(mktemp "${changelog_file}.tmp.XXXXXX")
+trap 'rm -f "$temp_file"' EXIT
+
+{
+  printf '# Changelog\n\n## Unreleased\n\n'
+  git log "$range" --pretty=format:'- %s [%h]'
+  printf '\n\n'
+  git log "$range" --pretty=format:'[%h]: https://github.com/germsvel/ex_crap/commit/%h'
+  printf '\n\n'
+
+  # Keep released entries and any introduction, but discard an earlier Unreleased section.
+  awk '
+    NR == 1 { next }
+    /^## Unreleased([[:space:]]|$)/ { skip = 1; next }
+    /^## / { skip = 0 }
+    !skip && !started && /^[[:space:]]*$/ { next }
+    !skip { started = 1; print }
+  ' "$changelog_file"
+} > "$temp_file"
+
+mv "$temp_file" "$changelog_file"
+echo "Changelog updated from $last_release_tag to HEAD"
