@@ -801,7 +801,10 @@ defmodule ExCrap.Complexity do
   defp arrow_count({:->, _meta, _clause}), do: 1
   defp arrow_count(_other), do: 0
 
-  defp generator_count(args), do: Enum.count(args, &match?({:<-, _meta, _args}, &1))
+  defp generator_count(args) when is_list(args),
+    do: Enum.count(args, &match?({:<-, _meta, _args}, &1))
+
+  defp generator_count(_args), do: 0
 
   defp comprehension_qualifier_count(args) do
     Enum.count(args, fn
